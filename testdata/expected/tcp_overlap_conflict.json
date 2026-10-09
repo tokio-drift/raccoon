@@ -1,0 +1,17 @@
+{
+  "name": "tcp_overlap_conflict.pcap",
+  "packets": 15,
+  "streams": [
+    {
+      "proto": "tcp",
+      "srcIp": "10.0.0.1",
+      "srcPort": 50000,
+      "dstIp": "10.0.0.2",
+      "dstPort": 80,
+      "c2sBytes": 9,
+      "s2cBytes": 8,
+      "c2sSha256": "f565e5f4a898e80173e54aa68c8d35f4a3521aa29a0b60567b495ef17ecdfc4a",
+      "s2cSha256": "a6c7cf707ec32204560c3967f3af57cb57cd3faa8302c0a1a6f36a5d78abfa2e"
+    }
+  ]
+}

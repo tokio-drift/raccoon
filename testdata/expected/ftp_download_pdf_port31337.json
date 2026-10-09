@@ -1,0 +1,39 @@
+{
+  "name": "ftp_download_pdf_port31337.pcap",
+  "packets": 27,
+  "streams": [
+    {
+      "proto": "ftp",
+      "srcIp": "10.0.0.1",
+      "srcPort": 50000,
+      "dstIp": "10.0.0.2",
+      "dstPort": 21,
+      "c2sBytes": 0,
+      "s2cBytes": 0,
+      "c2sSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "s2cSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "proto": "ftp-data",
+      "srcIp": "10.0.0.2",
+      "srcPort": 20,
+      "dstIp": "10.0.0.1",
+      "dstPort": 31337,
+      "c2sBytes": 329,
+      "s2cBytes": 0,
+      "c2sSha256": "7d5371d3d9d5588cdb4c7851773488380aa8e9644001ad32ba5dad8084272746",
+      "s2cSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "files": [
+    {
+      "sha256": "7d5371d3d9d5588cdb4c7851773488380aa8e9644001ad32ba5dad8084272746",
+      "ext": "pdf",
+      "name": "plans.pdf",
+      "status": "complete"
+    }
+  ],
+  "events": {
+    "FTP_LOGIN_SUCCESS": 1
+  }
+}

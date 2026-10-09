@@ -1,0 +1,18 @@
+{
+  "name": "tcp_gap.pcap",
+  "packets": 14,
+  "streams": [
+    {
+      "proto": "tcp",
+      "srcIp": "10.0.0.1",
+      "srcPort": 50000,
+      "dstIp": "10.0.0.2",
+      "dstPort": 80,
+      "c2sBytes": 9,
+      "s2cBytes": 6,
+      "c2sSha256": "f565e5f4a898e80173e54aa68c8d35f4a3521aa29a0b60567b495ef17ecdfc4a",
+      "s2cSha256": "52a4ce7228b5db96ecb1cd7294c0a8953b83fe4bd54e05191785ef99e88f6c6c",
+      "hasGaps": true
+    }
+  ]
+}

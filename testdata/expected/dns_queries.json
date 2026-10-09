@@ -1,0 +1,17 @@
+{
+  "name": "dns_queries.pcap",
+  "packets": 8,
+  "streams": [
+    {
+      "proto": "dns",
+      "srcIp": "10.0.0.5",
+      "srcPort": 53000,
+      "dstIp": "10.0.0.6",
+      "dstPort": 53,
+      "c2sBytes": 0,
+      "s2cBytes": 0,
+      "c2sSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "s2cSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

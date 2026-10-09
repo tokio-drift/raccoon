@@ -1,0 +1,17 @@
+{
+  "name": "tcp_wrap.pcap",
+  "packets": 15,
+  "streams": [
+    {
+      "proto": "tcp",
+      "srcIp": "10.0.0.1",
+      "srcPort": 50000,
+      "dstIp": "10.0.0.2",
+      "dstPort": 80,
+      "c2sBytes": 9,
+      "s2cBytes": 192,
+      "c2sSha256": "f565e5f4a898e80173e54aa68c8d35f4a3521aa29a0b60567b495ef17ecdfc4a",
+      "s2cSha256": "3591c43ee6b3ea7fe3585f4617694ac92c983bf2d70d631eb08e54c844b9dfe0"
+    }
+  ]
+}

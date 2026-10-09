@@ -1,0 +1,28 @@
+{
+  "name": "tcp_portreuse.pcap",
+  "packets": 18,
+  "streams": [
+    {
+      "proto": "tcp",
+      "srcIp": "10.0.0.1",
+      "srcPort": 50000,
+      "dstIp": "10.0.0.2",
+      "dstPort": 80,
+      "c2sBytes": 5,
+      "s2cBytes": 3,
+      "c2sSha256": "a7937b64b8caa58f03721bb6bacf5c78cb235febe0e70b1b84cd99541461a08e",
+      "s2cSha256": "7692c3ad3540bb803c020b3aee66cd8887123234ea0c6e7143c0add73ff431ed"
+    },
+    {
+      "proto": "tcp",
+      "srcIp": "10.0.0.1",
+      "srcPort": 50000,
+      "dstIp": "10.0.0.2",
+      "dstPort": 80,
+      "c2sBytes": 6,
+      "s2cBytes": 3,
+      "c2sSha256": "16367aacb67a4a017c8da8ab95682ccb390863780f7114dda0a0e0c55644c7c4",
+      "s2cSha256": "3fc4ccfe745870e2c0d99f71f30ff0656c8dedd41cc1d7d3d376b0dbe685e2f3"
+    }
+  ]
+}
