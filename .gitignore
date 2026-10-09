@@ -30,3 +30,9 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# RACCOON build output and runtime state
+/bin/
+node_modules/
+.raccoon/
+testdata/big/
