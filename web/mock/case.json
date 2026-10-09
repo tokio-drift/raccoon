@@ -1,0 +1,18 @@
+{
+  "id": "20260101-120000-abcdef",
+  "fileName": "ftp_upload_png.pcap",
+  "size": 48213,
+  "pcapSha256": "884959ed2bda8b3bc682afe0b2ee1d39b88de01e3c1d598ad6d40150f25ce695",
+  "status": "ready",
+  "stage": "done",
+  "progress": 100,
+  "durationNs": 2450000000,
+  "packets": 52,
+  "streams": 3,
+  "files": 5,
+  "events": 43,
+  "toolVersion": "devel",
+  "startedAt": "2026-01-01T12:00:00.000000000Z",
+  "finishedAt": "2026-01-01T12:00:02.450000000Z",
+  "error": ""
+}

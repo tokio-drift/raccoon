@@ -1,0 +1,23 @@
+{
+  "streamId": 1,
+  "dir": "c2s",
+  "offset": 0,
+  "length": 53,
+  "total": 53,
+  "dataBase64": "VVNFUiBib2INClBBU1MgaHVudGVyMg0KUEFTVg0KU1RPUiBzZWNyZXQucG5nDQpRVUlUDQo=",
+  "segments": [
+    {
+      "off": 0,
+      "len": 26,
+      "ts": "2026-01-01T12:00:01.200000000Z",
+      "packetNo": 3
+    },
+    {
+      "off": 26,
+      "len": 27,
+      "ts": "2026-01-01T12:00:01.300000000Z",
+      "packetNo": 4
+    }
+  ],
+  "carved": []
+}

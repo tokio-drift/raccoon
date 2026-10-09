@@ -1,0 +1,62 @@
+{
+  "items": [
+    {
+      "id": 1,
+      "parentId": 0,
+      "proto": "ftp",
+      "srcIp": "10.0.0.1",
+      "srcPort": 50000,
+      "dstIp": "10.0.0.2",
+      "dstPort": 21,
+      "startTs": "2026-01-01T12:00:00.100000000Z",
+      "endTs": "2026-01-01T12:00:02.400000000Z",
+      "bytesC2S": 142,
+      "bytesS2C": 402,
+      "packets": 14,
+      "firstPacket": 1,
+      "lastPacket": 14,
+      "midstream": false,
+      "hasGaps": false,
+      "udp": false
+    },
+    {
+      "id": 2,
+      "parentId": 1,
+      "proto": "ftp-data",
+      "srcIp": "10.0.0.1",
+      "srcPort": 50001,
+      "dstIp": "10.0.0.2",
+      "dstPort": 30000,
+      "startTs": "2026-01-01T12:00:03.000000000Z",
+      "endTs": "2026-01-01T12:00:03.900000000Z",
+      "bytesC2S": 4321,
+      "bytesS2C": 0,
+      "packets": 6,
+      "firstPacket": 15,
+      "lastPacket": 20,
+      "midstream": false,
+      "hasGaps": false,
+      "udp": false
+    },
+    {
+      "id": 3,
+      "parentId": 0,
+      "proto": "http",
+      "srcIp": "10.0.0.3",
+      "srcPort": 41000,
+      "dstIp": "10.0.0.4",
+      "dstPort": 8080,
+      "startTs": "2026-01-01T12:00:04.000000000Z",
+      "endTs": "2026-01-01T12:00:05.500000000Z",
+      "bytesC2S": 220,
+      "bytesS2C": 91234,
+      "packets": 18,
+      "firstPacket": 21,
+      "lastPacket": 38,
+      "midstream": false,
+      "hasGaps": true,
+      "udp": false
+    }
+  ],
+  "nextCursor": null
+}

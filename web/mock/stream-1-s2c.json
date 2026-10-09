@@ -1,0 +1,23 @@
+{
+  "streamId": 1,
+  "dir": "s2c",
+  "offset": 0,
+  "length": 159,
+  "total": 159,
+  "dataBase64": "MjIwIHJhY2Nvb24gRlRQIHJlYWR5DQozMzEgUGFzc3dvcmQgcmVxdWlyZWQNCjIzMCBMb2dnZWQgaW4NCjIyNyBFbnRlcmluZyBQYXNzaXZlIE1vZGUgKDEwLDAsMCwyLDExNyw0OCkNCjE1MCBPayB0byBzZW5kIGRhdGENCjIyNiBUcmFuc2ZlciBjb21wbGV0ZQ0KMjIxIEJ5ZQ0K",
+  "segments": [
+    {
+      "off": 0,
+      "len": 79,
+      "ts": "2026-01-01T12:00:01.200000000Z",
+      "packetNo": 3
+    },
+    {
+      "off": 79,
+      "len": 80,
+      "ts": "2026-01-01T12:00:01.300000000Z",
+      "packetNo": 4
+    }
+  ],
+  "carved": []
+}

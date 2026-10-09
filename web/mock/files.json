@@ -1,0 +1,124 @@
+{
+  "items": [
+    {
+      "id": 1,
+      "streamId": 2,
+      "dir": "c2s",
+      "startOff": 0,
+      "endOff": 45,
+      "format": "PNG",
+      "ext": "png",
+      "status": "complete",
+      "confidence": "high",
+      "size": 45,
+      "md5": "2abebeabee5467b793ae681802ac5efb",
+      "sha256": "33a3fe8dfa966fa60757222be9cdd984b21f059d80424daf9259c9a706be797b",
+      "displayName": "secret.png",
+      "path": "carved/33a3fe8dfa966fa60757222be9cdd984b21f059d80424daf9259c9a706be797b.png",
+      "magicHex": "89504e47",
+      "verdict": {
+        "source": "virustotal",
+        "status": "no_detections",
+        "score": 0,
+        "total": 70,
+        "checkedAt": "2026-01-01T12:05:00.000000000Z"
+      }
+    },
+    {
+      "id": 2,
+      "streamId": 3,
+      "dir": "s2c",
+      "startOff": 4096,
+      "endOff": 12300,
+      "format": "PDF",
+      "ext": "pdf",
+      "status": "truncated",
+      "confidence": "low",
+      "size": 8204,
+      "md5": "ed730d8dac47a20f167139d2eb173a48",
+      "sha256": "8ba13c4349dc73b27a99227d2ac82a14464fd47ea98214a723c8a777ca31b6c4",
+      "displayName": "report.pdf",
+      "path": "carved/8ba13c4349dc73b27a99227d2ac82a14464fd47ea98214a723c8a777ca31b6c4.pdf",
+      "magicHex": "25504446",
+      "verdict": {
+        "source": "virustotal",
+        "status": "not_checked",
+        "score": 0,
+        "total": 0,
+        "checkedAt": "2026-01-01T12:00:00.000000000Z"
+      }
+    },
+    {
+      "id": 3,
+      "streamId": 3,
+      "dir": "c2s",
+      "startOff": 120,
+      "endOff": 9000,
+      "format": "ZIP",
+      "ext": "zip",
+      "status": "complete",
+      "confidence": "high",
+      "size": 8880,
+      "md5": "301164037c5692848f0e8b05f651732c",
+      "sha256": "7d318b16275309aca21835a0ee0b455bdbb9ce47607c775115ab710d2299210e",
+      "displayName": "payload.zip",
+      "path": "carved/7d318b16275309aca21835a0ee0b455bdbb9ce47607c775115ab710d2299210e.zip",
+      "magicHex": "504b0304",
+      "verdict": {
+        "source": "yara",
+        "status": "malicious",
+        "score": 12,
+        "total": 70,
+        "checkedAt": "2026-01-01T12:05:01.000000000Z"
+      }
+    },
+    {
+      "id": 4,
+      "streamId": 3,
+      "dir": "s2c",
+      "startOff": 0,
+      "endOff": 75,
+      "format": "JPEG",
+      "ext": "jpg",
+      "status": "complete",
+      "confidence": "high",
+      "size": 75,
+      "md5": "db0eb944adab71f233b4df3679c4a827",
+      "sha256": "d730850c9caa601cafc5beb21a29e92936be66ad10f84c1fc239edef1fc32b71",
+      "displayName": "logo.jpg",
+      "path": "carved/d730850c9caa601cafc5beb21a29e92936be66ad10f84c1fc239edef1fc32b71.jpg",
+      "magicHex": "ffd8ffe0",
+      "verdict": {
+        "source": "virustotal",
+        "status": "suspicious",
+        "score": 1,
+        "total": 70,
+        "checkedAt": "2026-01-01T12:05:02.000000000Z"
+      }
+    },
+    {
+      "id": 5,
+      "streamId": 2,
+      "dir": "c2s",
+      "startOff": 4400,
+      "endOff": 13000,
+      "format": "ZIP",
+      "ext": "zip",
+      "status": "complete",
+      "confidence": "medium",
+      "size": 8600,
+      "md5": "faba297c8aa7e0d34f370c4ca345ae94",
+      "sha256": "46d7e95dae4bf2674778d0e34475cbc74cda66f0a21132266e534f1d39f095b9",
+      "displayName": "archive2.zip",
+      "path": "carved/46d7e95dae4bf2674778d0e34475cbc74cda66f0a21132266e534f1d39f095b9.zip",
+      "magicHex": "504b0304",
+      "verdict": {
+        "source": "virustotal",
+        "status": "unknown",
+        "score": 0,
+        "total": 0,
+        "checkedAt": "2026-01-01T12:05:03.000000000Z"
+      }
+    }
+  ]
+}
