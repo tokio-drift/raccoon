@@ -1,0 +1,206 @@
+package pipeline
+
+import (
+	"context"
+	"testing"
+
+	"github.com/tokio-drift/raccoon/internal/model"
+	"github.com/tokio-drift/raccoon/internal/resource"
+	"github.com/tokio-drift/raccoon/internal/store"
+	"github.com/tokio-drift/raccoon/internal/testutil"
+)
+
+func TestRunBasic(t *testing.T) {
+	pcapPath := testutil.Pcap(t, "tcp_basic.pcap")
+	caseBase := t.TempDir()
+
+	res, err := Run(context.Background(), Options{
+		PCAPPath: pcapPath,
+		BaseDir:  caseBase,
+	})
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	if res.Packets == 0 {
+		t.Errorf("expected packets > 0, got %d", res.Packets)
+	}
+	if res.Streams != 1 {
+		t.Errorf("expected 1 stream, got %d", res.Streams)
+	}
+	if res.PcapSHA256 == "" {
+		t.Error("expected non-empty PcapSHA256")
+	}
+	if res.PcapSize == 0 {
+		t.Error("expected non-zero PcapSize")
+	}
+
+	// Verify database content.
+	db, err := store.Open(res.Case.DB())
+	if err != nil {
+		t.Fatalf("open case db: %v", err)
+	}
+	defer db.Close()
+
+	streams, _, err := db.Streams(store.StreamFilter{})
+	if err != nil {
+		t.Fatalf("query streams: %v", err)
+	}
+	if len(streams) != 1 {
+		t.Fatalf("expected 1 stream in DB, got %d", len(streams))
+	}
+	st := streams[0]
+	if st.Proto != "tcp" {
+		t.Errorf("stream proto = %s, want tcp", st.Proto)
+	}
+	if st.HasGaps {
+		t.Errorf("stream has gaps = %v, want false", st.HasGaps)
+	}
+	if st.Midstream {
+		t.Errorf("stream midstream = %v, want false", st.Midstream)
+	}
+
+	// Verify segments.
+	segsC2S, err := db.SegmentsFor(st.ID, model.C2S)
+	if err != nil {
+		t.Fatalf("query segments C2S: %v", err)
+	}
+	segsS2C, err := db.SegmentsFor(st.ID, model.S2C)
+	if err != nil {
+		t.Fatalf("query segments S2C: %v", err)
+	}
+	if len(segsC2S)+len(segsS2C) == 0 {
+		t.Error("expected segments in DB, got 0")
+	}
+
+	// Verify metadata.
+	meta, err := db.Meta()
+	if err != nil {
+		t.Fatalf("query meta: %v", err)
+	}
+	if meta["pcap_name"] != "tcp_basic.pcap" {
+		t.Errorf("meta pcap_name = %q, want tcp_basic.pcap", meta["pcap_name"])
+	}
+	if meta["pcap_sha256"] != res.PcapSHA256 {
+		t.Errorf("meta pcap_sha256 = %q, want %q", meta["pcap_sha256"], res.PcapSHA256)
+	}
+}
+
+func TestRunWorkers(t *testing.T) {
+	pcapPath := testutil.Pcap(t, "tcp_basic.pcap")
+
+	for _, workers := range []int{1, 2, 4} {
+		t.Run("workers_"+string(rune('0'+workers)), func(t *testing.T) {
+			b, err := resource.NewBudget(256*1024*1024, 0, workers)
+			if err != nil {
+				t.Fatalf("NewBudget: %v", err)
+			}
+
+			res, err := Run(context.Background(), Options{
+				PCAPPath: pcapPath,
+				BaseDir:  t.TempDir(),
+				Budget:   b,
+			})
+			if err != nil {
+				t.Fatalf("Run with %d workers failed: %v", workers, err)
+			}
+			if res.Streams != 1 {
+				t.Errorf("workers=%d: streams = %d, want 1", workers, res.Streams)
+			}
+		})
+	}
+}
+
+func TestRunGap(t *testing.T) {
+	pcapPath := testutil.Pcap(t, "tcp_gap.pcap")
+
+	res, err := Run(context.Background(), Options{
+		PCAPPath: pcapPath,
+		BaseDir:  t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	db, err := store.Open(res.Case.DB())
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer db.Close()
+
+	streams, _, err := db.Streams(store.StreamFilter{})
+	if err != nil {
+		t.Fatalf("query streams: %v", err)
+	}
+	if len(streams) != 1 {
+		t.Fatalf("expected 1 stream, got %d", len(streams))
+	}
+	if !streams[0].HasGaps {
+		t.Error("expected HasGaps = true for tcp_gap.pcap")
+	}
+
+	// Verify EvTCPAnomaly event.
+	events, _, err := db.Events(store.EventFilter{Types: []model.EventType{model.EvTCPAnomaly}})
+	if err != nil {
+		t.Fatalf("query events: %v", err)
+	}
+	if len(events) == 0 {
+		t.Error("expected TCP anomaly event, got 0")
+	}
+}
+
+func TestRunCancel(t *testing.T) {
+	pcapPath := testutil.Pcap(t, "tcp_basic.pcap")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately
+
+	_, err := Run(ctx, Options{
+		PCAPPath: pcapPath,
+		BaseDir:  t.TempDir(),
+	})
+	if err == nil {
+		t.Error("expected error on cancelled context, got nil")
+	}
+}
+
+func TestRunProgressAndHooks(t *testing.T) {
+	pcapPath := testutil.Pcap(t, "tcp_basic.pcap")
+	prog := NewProgress()
+
+	var hookCalled bool
+	var progressSnapshots []ProgressSnapshot
+
+	res, err := Run(context.Background(), Options{
+		PCAPPath: pcapPath,
+		BaseDir:  t.TempDir(),
+		Progress: prog,
+		OnProgress: func(s ProgressSnapshot) {
+			progressSnapshots = append(progressSnapshots, s)
+		},
+		Hooks: Hooks{
+			AnalyzeStream: func(ctx context.Context, cs *ClosedStream) error {
+				hookCalled = true
+				if cs.Flow == nil {
+					t.Error("expected cs.Flow to be non-nil")
+				}
+				return nil
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	if !hookCalled {
+		t.Error("expected AnalyzeStream hook to be called")
+	}
+	if prog.Stage() != "done" {
+		t.Errorf("final progress stage = %q, want done", prog.Stage())
+	}
+	if len(progressSnapshots) == 0 {
+		t.Error("expected progress snapshots to be recorded")
+	}
+	if res.Duration <= 0 {
+		t.Errorf("expected positive duration, got %v", res.Duration)
+	}
+}
