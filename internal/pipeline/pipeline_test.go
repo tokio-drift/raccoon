@@ -2,8 +2,17 @@ package pipeline
 
 import (
 	"context"
+	"errors"
+	"net"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+	"github.com/google/gopacket/pcapgo"
+	"github.com/tokio-drift/raccoon/internal/casedir"
 	"github.com/tokio-drift/raccoon/internal/model"
 	"github.com/tokio-drift/raccoon/internal/resource"
 	"github.com/tokio-drift/raccoon/internal/store"
@@ -202,5 +211,162 @@ func TestRunProgressAndHooks(t *testing.T) {
 	}
 	if res.Duration <= 0 {
 		t.Errorf("expected positive duration, got %v", res.Duration)
+	}
+}
+
+func generateUDPPCAP(t *testing.T, count int) string {
+	t.Helper()
+	pcapFile := filepath.Join(t.TempDir(), "udp_flows.pcap")
+	f, err := os.Create(pcapFile)
+	if err != nil {
+		t.Fatalf("create pcap: %v", err)
+	}
+	defer f.Close()
+
+	pw := pcapgo.NewWriter(f)
+	if err := pw.WriteFileHeader(65535, layers.LinkTypeEthernet); err != nil {
+		t.Fatalf("write pcap header: %v", err)
+	}
+
+	eth := &layers.Ethernet{
+		SrcMAC:       net.HardwareAddr{0x02, 0, 0, 0, 0, 1},
+		DstMAC:       net.HardwareAddr{0x02, 0, 0, 0, 0, 2},
+		EthernetType: layers.EthernetTypeIPv4,
+	}
+	ts := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	for i := 0; i < count; i++ {
+		ip := &layers.IPv4{
+			Version:  4,
+			IHL:      5,
+			TTL:      64,
+			Protocol: layers.IPProtocolUDP,
+			SrcIP:    net.IPv4(10, 0, byte(i/256), byte(i%256)),
+			DstIP:    net.IPv4(10, 1, 0, 1),
+		}
+		udp := &layers.UDP{
+			SrcPort: layers.UDPPort(10000 + (i % 50000)),
+			DstPort: 53,
+		}
+		_ = udp.SetNetworkLayerForChecksum(ip)
+		buf := gopacket.NewSerializeBuffer()
+		_ = gopacket.SerializeLayers(buf, gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}, eth, ip, udp, gopacket.Payload([]byte("udp-payload")))
+		data := buf.Bytes()
+		err := pw.WritePacket(gopacket.CaptureInfo{
+			Timestamp:     ts.Add(time.Duration(i) * time.Millisecond),
+			CaptureLength: len(data),
+			Length:        len(data),
+		}, data)
+		if err != nil {
+			t.Fatalf("write packet %d: %v", i, err)
+		}
+	}
+	return pcapFile
+}
+
+func TestHookError300UDPFlowsWithin5s(t *testing.T) {
+	pcapPath := generateUDPPCAP(t, 300)
+	budget, err := resource.NewBudget(256*1024*1024, 0, 1)
+	if err != nil {
+		t.Fatalf("NewBudget: %v", err)
+	}
+
+	hookErr := errors.New("hook intentional failure")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	_, err = Run(ctx, Options{
+		PCAPPath: pcapPath,
+		BaseDir:  t.TempDir(),
+		Budget:   budget,
+		Hooks: Hooks{
+			AnalyzeStream: func(ctx context.Context, cs *ClosedStream) error {
+				return hookErr
+			},
+		},
+	})
+
+	elapsed := time.Since(start)
+	if elapsed > 5*time.Second {
+		t.Fatalf("Run took %v, want <= 5s", elapsed)
+	}
+	if !errors.Is(err, hookErr) {
+		t.Fatalf("Run error = %v, want %v", err, hookErr)
+	}
+}
+
+func TestContextCancelledMidRunWithin5s(t *testing.T) {
+	pcapPath := generateUDPPCAP(t, 300)
+	budget, err := resource.NewBudget(256*1024*1024, 0, 2)
+	if err != nil {
+		t.Fatalf("NewBudget: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	runCtx, runCancel := context.WithCancel(ctx)
+
+	start := time.Now()
+	_, err = Run(runCtx, Options{
+		PCAPPath: pcapPath,
+		BaseDir:  t.TempDir(),
+		Budget:   budget,
+		Hooks: Hooks{
+			AnalyzeStream: func(ctx context.Context, cs *ClosedStream) error {
+				runCancel()
+				return nil
+			},
+		},
+	})
+
+	elapsed := time.Since(start)
+	if elapsed > 5*time.Second {
+		t.Fatalf("Run took %v, want <= 5s", elapsed)
+	}
+	if err == nil {
+		t.Fatal("expected error on cancelled context, got nil")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("Run error = %v, want context.Canceled", err)
+	}
+}
+
+func TestSpoolFailureReadOnlyStreamsDir(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("skipping read-only streams dir test when running as root")
+	}
+
+	pcapPath := testutil.Pcap(t, "tcp_basic.pcap")
+	baseDir := t.TempDir()
+
+	c, err := casedir.Create(baseDir, casedir.Options{PCAP: pcapPath})
+	if err != nil {
+		t.Fatalf("casedir.Create: %v", err)
+	}
+
+	streamsDir := c.StreamsDir()
+	if err := os.Chmod(streamsDir, 0o500); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(streamsDir, 0o700)
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	start := time.Now()
+	_, err = Run(ctx, Options{
+		PCAPPath: pcapPath,
+		Case:     c,
+	})
+	elapsed := time.Since(start)
+	if elapsed > 5*time.Second {
+		t.Fatalf("Run took %v, want <= 5s", elapsed)
+	}
+	if err == nil {
+		t.Fatal("expected error from spool failure, got nil")
 	}
 }

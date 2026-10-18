@@ -177,6 +177,9 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		return nil, errors.New("pipeline: missing PCAPPath")
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	startTime := time.Now()
 
 	// 1. Budget setup.
@@ -294,6 +297,7 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		closedStreamCap = 64
 	}
 	closedStreamChan := make(chan *ClosedStream, closedStreamCap)
+	workerErrCh := make(chan error, numWorkers)
 
 	// Shared flow ID counter across all workers.
 	sharedCounter := flow.NewCounter(1)
@@ -304,7 +308,7 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 	for w := 0; w < numWorkers; w++ {
 		go func(workerID int, in <-chan *packetMsg) {
 			defer workerWg.Done()
-			runWorker(ctx, in, closedStreamChan, sharedCounter, c, streamAcc, progress)
+			runWorker(ctx, cancel, in, closedStreamChan, workerErrCh, sharedCounter, c, streamAcc, progress)
 		}(w, workerChans[w])
 	}
 
@@ -323,12 +327,16 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 	go func() {
 		defer postWg.Done()
 		postErr = runPostProcessing(ctx, closedStreamChan, db, opts.Hooks, progress, &totalEvents)
+		if postErr != nil {
+			cancel()
+		}
 	}()
 
 	// 9. Single goroutine capture reader and decoder.
 	dec := decode.NewDecoder()
 	var readErr error
 
+readLoop:
 	for {
 		if ctx.Err() != nil {
 			readErr = ctx.Err()
@@ -341,6 +349,7 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		}
 		if err != nil {
 			readErr = fmt.Errorf("pipeline: read packet: %w", err)
+			cancel()
 			break
 		}
 
@@ -353,6 +362,7 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		}
 		if err := idxWriter.Add(idxRec); err != nil {
 			readErr = fmt.Errorf("pipeline: write index: %w", err)
+			cancel()
 			break
 		}
 
@@ -401,7 +411,7 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		case <-ctx.Done():
 			packetPool.Put(msg)
 			readErr = ctx.Err()
-			break
+			break readLoop
 		}
 	}
 
@@ -419,11 +429,20 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 	workerWg.Wait()
 	postWg.Wait()
 
-	if readErr != nil {
-		return nil, readErr
+	var workerErr error
+	select {
+	case workerErr = <-workerErrCh:
+	default:
 	}
+
 	if postErr != nil {
 		return nil, postErr
+	}
+	if workerErr != nil {
+		return nil, workerErr
+	}
+	if readErr != nil {
+		return nil, readErr
 	}
 
 	// Retrieve file SHA256 and size.
@@ -479,8 +498,10 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 // reassembles TCP streams, and emits closed streams to closedChan.
 func runWorker(
 	ctx context.Context,
+	cancel context.CancelFunc,
 	in <-chan *packetMsg,
 	closedChan chan<- *ClosedStream,
+	errCh chan<- error,
 	counter func() int64,
 	c *casedir.Case,
 	accountant reassembly.Accountant,
@@ -490,15 +511,32 @@ func runWorker(
 	streams := make(map[int64]*reassembly.Stream)
 	anomalies := make(map[int64][]reassembly.Anomaly)
 	sent := make(map[int64]bool)
+
+	reportErr := func(err error) {
+		if err == nil {
+			return
+		}
+		select {
+		case errCh <- err:
+		default:
+		}
+		cancel()
+	}
+
 	emitClosed := func(f *flow.Flow, s *reassembly.Stream, anoms []reassembly.Anomaly) {
-		if sent[f.ID] {
+		if f == nil || sent[f.ID] {
 			return
 		}
 		sent[f.ID] = true
-		closedChan <- &ClosedStream{
-			Flow:      f,
+		fc := *f
+		cs := &ClosedStream{
+			Flow:      &fc,
 			Stream:    s,
 			Anomalies: anoms,
+		}
+		select {
+		case closedChan <- cs:
+		case <-ctx.Done():
 		}
 	}
 
@@ -514,20 +552,26 @@ func runWorker(
 				progress.streams.Add(1)
 				if !f.IsUDP() {
 					spool, err := reassembly.NewSpool(c.StreamsDir(), f.ID)
-					if err == nil {
-						streamID := f.ID
-						stream := reassembly.NewStream(reassembly.StreamConfig{
-							ID:         streamID,
-							Proto:      f.Proto,
-							Spool:      spool,
-							Accountant: accountant,
-							Midstream:  f.Midstream,
-							OnAnomaly: func(a reassembly.Anomaly) {
-								anomalies[streamID] = append(anomalies[streamID], a)
-							},
-						})
-						streams[streamID] = stream
+					if err != nil {
+						reportErr(fmt.Errorf("pipeline: worker spool %d: %w", f.ID, err))
+						packetPool.Put(msg)
+						for rem := range in {
+							packetPool.Put(rem)
+						}
+						return
 					}
+					streamID := f.ID
+					stream := reassembly.NewStream(reassembly.StreamConfig{
+						ID:         streamID,
+						Proto:      f.Proto,
+						Spool:      spool,
+						Accountant: accountant,
+						Midstream:  f.Midstream,
+						OnAnomaly: func(a reassembly.Anomaly) {
+							anomalies[streamID] = append(anomalies[streamID], a)
+						},
+					})
+					streams[streamID] = stream
 				}
 			}
 
@@ -535,7 +579,9 @@ func runWorker(
 				if stream := streams[f.ID]; stream != nil {
 					stream.AddPacket(dir, msg.pkt.Seq, msg.pkt.TCPFlags, msg.pkt.Payload, msg.pkt.TS, msg.pkt.No)
 					if f.State == flow.StateClosed {
-						_ = stream.Close()
+						if err := stream.Close(); err != nil {
+							reportErr(fmt.Errorf("pipeline: worker close stream %d: %w", f.ID, err))
+						}
 						emitClosed(f, stream, anomalies[f.ID])
 						delete(streams, f.ID)
 						delete(anomalies, f.ID)
@@ -549,7 +595,9 @@ func runWorker(
 					if !exp.IsUDP() {
 						stream := streams[exp.ID]
 						if stream != nil {
-							_ = stream.Close()
+							if err := stream.Close(); err != nil {
+								reportErr(fmt.Errorf("pipeline: worker close stream %d: %w", exp.ID, err))
+							}
 						}
 						emitClosed(exp, stream, anomalies[exp.ID])
 						delete(streams, exp.ID)
@@ -566,9 +614,9 @@ func runWorker(
 
 	// Flush all remaining active flows when input is exhausted.
 	for id, stream := range streams {
-		_ = stream.Close()
-		// If flow still in table or was tracked
-		_ = id
+		if err := stream.Close(); err != nil {
+			reportErr(fmt.Errorf("pipeline: worker close stream %d: %w", id, err))
+		}
 	}
 
 	// Drain any flows remaining in table.
