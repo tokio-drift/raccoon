@@ -29,12 +29,14 @@ import (
 )
 
 // Progress tracks atomic pipeline progress counters for SSE and status monitoring.
+// Files remains 0 until Phase 7 (file carving).
 type Progress struct {
 	stage       atomic.Pointer[string]
 	packetsRead atomic.Int64
 	bytesRead   atomic.Int64
 	streams     atomic.Int64
-	files       atomic.Int64
+	files       atomic.Int64 // remains 0 until Phase 7 (file carving)
+	notifyCh    atomic.Pointer[chan struct{}]
 }
 
 // NewProgress returns a new initialized Progress tracker.
@@ -45,9 +47,15 @@ func NewProgress() *Progress {
 	return p
 }
 
-// SetStage updates the current stage name.
+// SetStage updates the current stage name and triggers notification if a notifier is registered.
 func (p *Progress) SetStage(stage string) {
 	p.stage.Store(&stage)
+	if chPtr := p.notifyCh.Load(); chPtr != nil {
+		select {
+		case *chPtr <- struct{}{}:
+		default:
+		}
+	}
 }
 
 // Stage returns the current pipeline stage name.
@@ -128,10 +136,11 @@ type Options struct {
 
 // Result summarizes a completed pipeline analysis run.
 type Result struct {
-	Case       *casedir.Case
-	Packets    int64
-	Bytes      int64
-	Streams    int64
+	Case    *casedir.Case
+	Packets int64
+	Bytes   int64
+	Streams int64
+	// Files is the count of carved files extracted. It remains 0 until Phase 7 (file carving).
 	Files      int64
 	Events     int64
 	Duration   time.Duration
@@ -233,18 +242,58 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		defer db.Close()
 	}
 
-	// 4. Progress tracker.
+	// 4. Progress tracker and single notifier goroutine.
 	progress := opts.Progress
 	if progress == nil {
 		progress = NewProgress()
 	}
-	progress.SetStage("read")
-	notifyProgress := func() {
-		if opts.OnProgress != nil {
-			opts.OnProgress(progress.Snapshot())
+
+	var stopNotifier func(sendDone bool)
+	if opts.OnProgress != nil {
+		notifyCh := make(chan struct{}, 1)
+		progress.notifyCh.Store(&notifyCh)
+		stopCh := make(chan struct{})
+		notifierDone := make(chan struct{})
+		var shouldSendDone atomic.Bool
+		var once sync.Once
+
+		go func() {
+			defer close(notifierDone)
+			ticker := time.NewTicker(200 * time.Millisecond)
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-stopCh:
+					if shouldSendDone.Load() {
+						opts.OnProgress(progress.Snapshot())
+					}
+					return
+				case <-ticker.C:
+					opts.OnProgress(progress.Snapshot())
+				case <-notifyCh:
+					opts.OnProgress(progress.Snapshot())
+				}
+			}
+		}()
+
+		stopNotifier = func(sendDone bool) {
+			once.Do(func() {
+				if sendDone {
+					shouldSendDone.Store(true)
+				}
+				close(stopCh)
+				<-notifierDone
+			})
 		}
+	} else {
+		stopNotifier = func(bool) {}
 	}
-	notifyProgress()
+	defer func() {
+		stopNotifier(false)
+	}()
+
+	progress.SetStage("read")
 
 	// 5. Open capture and packet index writer.
 	rd, info, err := capture.Open(opts.PCAPPath)
@@ -467,19 +516,26 @@ readLoop:
 	filesCount := progress.files.Load()
 
 	// Write metadata to store.
-	_ = db.SetMeta("pcap_name", filepath.Base(opts.PCAPPath))
-	_ = db.SetMeta("pcap_size", strconv.FormatInt(pcapSize, 10))
-	_ = db.SetMeta("pcap_sha256", sRes.sha256)
-	_ = db.SetMeta("packets", strconv.FormatInt(packetsCount, 10))
-	_ = db.SetMeta("streams", strconv.FormatInt(streamsCount, 10))
-	_ = db.SetMeta("duration_ns", strconv.FormatInt(duration.Nanoseconds(), 10))
-	_ = db.SetMeta("tool_version", version.String())
-	_ = db.SetMeta("max_mem", strconv.FormatInt(budget.MaxMem, 10))
-	_ = db.SetMeta("max_disk", strconv.FormatInt(budget.MaxDisk, 10))
-	_ = db.SetMeta("workers", strconv.Itoa(budget.Workers))
+	metaPairs := [][2]string{
+		{"pcap_name", filepath.Base(opts.PCAPPath)},
+		{"pcap_size", strconv.FormatInt(pcapSize, 10)},
+		{"pcap_sha256", sRes.sha256},
+		{"packets", strconv.FormatInt(packetsCount, 10)},
+		{"streams", strconv.FormatInt(streamsCount, 10)},
+		{"duration_ns", strconv.FormatInt(duration.Nanoseconds(), 10)},
+		{"tool_version", version.String()},
+		{"max_mem", strconv.FormatInt(budget.MaxMem, 10)},
+		{"max_disk", strconv.FormatInt(budget.MaxDisk, 10)},
+		{"workers", strconv.Itoa(budget.Workers)},
+	}
+	for _, pair := range metaPairs {
+		if err := db.SetMeta(pair[0], pair[1]); err != nil {
+			return nil, fmt.Errorf("pipeline: set meta %q: %w", pair[0], err)
+		}
+	}
 
 	progress.SetStage("done")
-	notifyProgress()
+	stopNotifier(true)
 
 	return &Result{
 		Case:       c,

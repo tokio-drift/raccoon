@@ -6,6 +6,9 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -368,5 +371,101 @@ func TestSpoolFailureReadOnlyStreamsDir(t *testing.T) {
 	}
 	if err == nil {
 		t.Fatal("expected error from spool failure, got nil")
+	}
+}
+
+func TestOnProgressContract(t *testing.T) {
+	pcapPath := testutil.Pcap(t, "tcp_basic.pcap")
+	prog := NewProgress()
+
+	var inCallback atomic.Int32
+	var maxConcurrent atomic.Int32
+	var snapshots []ProgressSnapshot
+	var mu sync.Mutex
+
+	res, err := Run(context.Background(), Options{
+		PCAPPath: pcapPath,
+		BaseDir:  t.TempDir(),
+		Progress: prog,
+		OnProgress: func(s ProgressSnapshot) {
+			cur := inCallback.Add(1)
+			defer inCallback.Add(-1)
+			if cur > 1 {
+				maxConcurrent.Store(cur)
+			}
+			time.Sleep(2 * time.Millisecond)
+
+			mu.Lock()
+			snapshots = append(snapshots, s)
+			mu.Unlock()
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+	if res == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	// (a) OnProgress is never called concurrently
+	if mc := maxConcurrent.Load(); mc > 1 {
+		t.Errorf("OnProgress called concurrently: max concurrency was %d, want 1", mc)
+	}
+
+	// (b) the last snapshot has stage "done"
+	if len(snapshots) == 0 {
+		t.Fatal("expected at least one snapshot, got 0")
+	}
+	last := snapshots[len(snapshots)-1]
+	if last.Stage != "done" {
+		t.Errorf("last snapshot stage = %q, want %q", last.Stage, "done")
+	}
+
+	// (c) packet and byte counts never decrease between snapshots
+	for i := 1; i < len(snapshots); i++ {
+		prev := snapshots[i-1]
+		curr := snapshots[i]
+		if curr.PacketsRead < prev.PacketsRead {
+			t.Errorf("snapshot %d: packet count decreased from %d to %d", i, prev.PacketsRead, curr.PacketsRead)
+		}
+		if curr.BytesRead < prev.BytesRead {
+			t.Errorf("snapshot %d: byte count decreased from %d to %d", i, prev.BytesRead, curr.BytesRead)
+		}
+	}
+}
+
+func TestSetMetaFailureReturnsError(t *testing.T) {
+	pcapPath := testutil.Pcap(t, "tcp_basic.pcap")
+	baseDir := t.TempDir()
+
+	c, err := casedir.Create(baseDir, casedir.Options{PCAP: pcapPath})
+	if err != nil {
+		t.Fatalf("casedir.Create: %v", err)
+	}
+
+	db, err := store.Open(c.DB())
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	defer db.Close()
+
+	// Drop the meta table so SetMeta fails when Run tries to insert metadata.
+	if _, err := db.Conn().Exec("DROP TABLE meta;"); err != nil {
+		t.Fatalf("drop meta table: %v", err)
+	}
+
+	res, err := Run(context.Background(), Options{
+		PCAPPath: pcapPath,
+		Case:     c,
+		Store:    db,
+	})
+	if err == nil {
+		t.Fatal("expected error from SetMeta failure, got nil")
+	}
+	if res != nil {
+		t.Errorf("expected nil result on SetMeta failure, got %v", res)
+	}
+	if !strings.Contains(err.Error(), "set meta") {
+		t.Errorf("expected error mentioning 'set meta', got: %v", err)
 	}
 }
