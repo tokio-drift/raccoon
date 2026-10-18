@@ -469,3 +469,243 @@ func TestSetMetaFailureReturnsError(t *testing.T) {
 		t.Errorf("expected error mentioning 'set meta', got: %v", err)
 	}
 }
+
+func TestTCPPortReuseEmitsBothStreams(t *testing.T) {
+	pcapFile := filepath.Join(t.TempDir(), "tcp_port_reuse.pcap")
+	f, err := os.Create(pcapFile)
+	if err != nil {
+		t.Fatalf("create pcap: %v", err)
+	}
+
+	pw := pcapgo.NewWriter(f)
+	if err := pw.WriteFileHeader(65535, layers.LinkTypeEthernet); err != nil {
+		t.Fatalf("write header: %v", err)
+	}
+
+	eth := &layers.Ethernet{
+		SrcMAC:       net.HardwareAddr{0x00, 0x11, 0x22, 0x33, 0x44, 0x55},
+		DstMAC:       net.HardwareAddr{0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb},
+		EthernetType: layers.EthernetTypeIPv4,
+	}
+	ip := &layers.IPv4{
+		Version:  4,
+		IHL:      5,
+		SrcIP:    net.ParseIP("192.168.1.10").To4(),
+		DstIP:    net.ParseIP("192.168.1.20").To4(),
+		Protocol: layers.IPProtocolTCP,
+		TTL:      64,
+	}
+
+	writeTCPPacket := func(ts time.Time, seq uint32, ack uint32, syn, ackFlag, fin bool, payload []byte) {
+		tcp := &layers.TCP{
+			SrcPort: 40001,
+			DstPort: 80,
+			Seq:     seq,
+			Ack:     ack,
+			SYN:     syn,
+			ACK:     ackFlag,
+			FIN:     fin,
+			Window:  65535,
+		}
+		_ = tcp.SetNetworkLayerForChecksum(ip)
+		buf := gopacket.NewSerializeBuffer()
+		var pLayer gopacket.SerializableLayer
+		if len(payload) > 0 {
+			pLayer = gopacket.Payload(payload)
+			_ = gopacket.SerializeLayers(buf, gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}, eth, ip, tcp, pLayer)
+		} else {
+			_ = gopacket.SerializeLayers(buf, gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}, eth, ip, tcp)
+		}
+		data := buf.Bytes()
+		err := pw.WritePacket(gopacket.CaptureInfo{
+			Timestamp:     ts,
+			CaptureLength: len(data),
+			Length:        len(data),
+		}, data)
+		if err != nil {
+			t.Fatalf("write packet: %v", err)
+		}
+	}
+
+	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	// 1. SYN
+	writeTCPPacket(t0, 1000, 0, true, false, false, nil)
+	// 2. Data
+	writeTCPPacket(t0.Add(10*time.Millisecond), 1001, 0, false, true, false, []byte("hello stream 1"))
+	// 3. FIN from one side only
+	writeTCPPacket(t0.Add(20*time.Millisecond), 1015, 0, false, true, true, nil)
+	// 4. Pure SYN with same 4-tuple and new ISN
+	writeTCPPacket(t0.Add(30*time.Millisecond), 50000, 0, true, false, false, nil)
+
+	if err := f.Close(); err != nil {
+		t.Fatalf("close pcap: %v", err)
+	}
+
+	baseDir := t.TempDir()
+	res, err := Run(context.Background(), Options{
+		PCAPPath: pcapFile,
+		BaseDir:  baseDir,
+	})
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	db, err := store.Open(res.Case.DB())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer db.Close()
+
+	streams, _, err := db.Streams(store.StreamFilter{})
+	if err != nil {
+		t.Fatalf("query streams: %v", err)
+	}
+	if len(streams) != 2 {
+		t.Fatalf("expected 2 stream rows in DB, got %d", len(streams))
+	}
+}
+
+func TestRun300UDPFlows(t *testing.T) {
+	pcapPath := generateUDPPCAP(t, 300)
+	baseDir := t.TempDir()
+
+	res, err := Run(context.Background(), Options{
+		PCAPPath: pcapPath,
+		BaseDir:  baseDir,
+	})
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	if res.Streams != 300 {
+		t.Errorf("res.Streams = %d, want 300", res.Streams)
+	}
+
+	db, err := store.Open(res.Case.DB())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer db.Close()
+
+	streams, _, err := db.Streams(store.StreamFilter{Limit: 1000})
+	if err != nil {
+		t.Fatalf("query streams: %v", err)
+	}
+	if len(streams) != 300 {
+		t.Fatalf("expected 300 stream rows in DB, got %d", len(streams))
+	}
+
+	for _, st := range streams {
+		segsC2S, err := db.SegmentsFor(st.ID, model.C2S)
+		if err != nil {
+			t.Fatalf("query segments C2S: %v", err)
+		}
+		segsS2C, err := db.SegmentsFor(st.ID, model.S2C)
+		if err != nil {
+			t.Fatalf("query segments S2C: %v", err)
+		}
+		if len(segsC2S)+len(segsS2C) != 0 {
+			t.Errorf("stream %d has segments, want 0", st.ID)
+		}
+	}
+
+	events, _, err := db.Events(store.EventFilter{})
+	if err != nil {
+		t.Fatalf("query events: %v", err)
+	}
+	if len(events) != 0 {
+		t.Errorf("expected 0 events, got %d", len(events))
+	}
+}
+
+func TestFlowsExpiredBy1sThrottleEmitted(t *testing.T) {
+	pcapFile := filepath.Join(t.TempDir(), "throttle_expire.pcap")
+	f, err := os.Create(pcapFile)
+	if err != nil {
+		t.Fatalf("create pcap: %v", err)
+	}
+
+	pw := pcapgo.NewWriter(f)
+	if err := pw.WriteFileHeader(65535, layers.LinkTypeEthernet); err != nil {
+		t.Fatalf("write pcap header: %v", err)
+	}
+
+	eth := &layers.Ethernet{
+		SrcMAC:       net.HardwareAddr{0x02, 0, 0, 0, 0, 1},
+		DstMAC:       net.HardwareAddr{0x02, 0, 0, 0, 0, 2},
+		EthernetType: layers.EthernetTypeIPv4,
+	}
+	t0 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	// Create 4 UDP flows spaced 150 seconds apart (> FlowIdleTimeout 120s, > 1s throttle).
+	// Flows 0, 1, 2 expire via the 1s throttle in runWorker as subsequent packets arrive.
+	// Flow 3 expires at final drain.
+	const numFlows = 4
+	for i := 0; i < numFlows; i++ {
+		ip := &layers.IPv4{
+			Version:  4,
+			IHL:      5,
+			TTL:      64,
+			Protocol: layers.IPProtocolUDP,
+			SrcIP:    net.IPv4(10, 0, 0, byte(i+1)),
+			DstIP:    net.IPv4(10, 1, 0, 1),
+		}
+		udp := &layers.UDP{
+			SrcPort: layers.UDPPort(20000 + i),
+			DstPort: 53,
+		}
+		_ = udp.SetNetworkLayerForChecksum(ip)
+		buf := gopacket.NewSerializeBuffer()
+		_ = gopacket.SerializeLayers(buf, gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}, eth, ip, udp, gopacket.Payload([]byte("udp-throttle-test")))
+		data := buf.Bytes()
+		pktTS := t0.Add(time.Duration(i*150) * time.Second)
+		err := pw.WritePacket(gopacket.CaptureInfo{
+			Timestamp:     pktTS,
+			CaptureLength: len(data),
+			Length:        len(data),
+		}, data)
+		if err != nil {
+			t.Fatalf("write packet %d: %v", i, err)
+		}
+	}
+	if err := f.Close(); err != nil {
+		t.Fatalf("close pcap: %v", err)
+	}
+
+	var emitted atomic.Int64
+	baseDir := t.TempDir()
+	res, err := Run(context.Background(), Options{
+		PCAPPath: pcapFile,
+		BaseDir:  baseDir,
+		Hooks: Hooks{
+			AnalyzeStream: func(ctx context.Context, cs *ClosedStream) error {
+				emitted.Add(1)
+				return nil
+			},
+		},
+	})
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	if emitted.Load() != numFlows {
+		t.Errorf("emitted = %d, want %d", emitted.Load(), numFlows)
+	}
+	if res.Streams != numFlows {
+		t.Errorf("res.Streams = %d, want %d", res.Streams, numFlows)
+	}
+
+	db, err := store.Open(res.Case.DB())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer db.Close()
+
+	streams, _, err := db.Streams(store.StreamFilter{})
+	if err != nil {
+		t.Fatalf("query streams: %v", err)
+	}
+	if len(streams) != numFlows {
+		t.Fatalf("expected %d stream rows in DB, got %d", numFlows, len(streams))
+	}
+}

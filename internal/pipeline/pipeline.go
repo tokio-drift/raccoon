@@ -567,6 +567,9 @@ func runWorker(
 	streams := make(map[int64]*reassembly.Stream)
 	anomalies := make(map[int64][]reassembly.Anomaly)
 	sent := make(map[int64]bool)
+	active := make(map[int64]*flow.Flow)
+	var lastExpire int64
+	var expireInit bool
 
 	reportErr := func(err error) {
 		if err == nil {
@@ -584,6 +587,7 @@ func runWorker(
 			return
 		}
 		sent[f.ID] = true
+		delete(active, f.ID)
 		fc := *f
 		cs := &ClosedStream{
 			Flow:      &fc,
@@ -628,6 +632,7 @@ func runWorker(
 						},
 					})
 					streams[streamID] = stream
+					active[streamID] = f
 				}
 			}
 
@@ -645,21 +650,27 @@ func runWorker(
 				}
 			}
 
-			// Periodically reap expired flows on capture clock.
-			if expired := tbl.Expire(msg.pkt.TS); len(expired) > 0 {
-				for _, exp := range expired {
-					if !exp.IsUDP() {
-						stream := streams[exp.ID]
-						if stream != nil {
-							if err := stream.Close(); err != nil {
-								reportErr(fmt.Errorf("pipeline: worker close stream %d: %w", exp.ID, err))
+			// Periodically reap expired flows on capture clock (at most once per 1s of capture time).
+			if !expireInit {
+				lastExpire = msg.pkt.TS
+				expireInit = true
+			} else if msg.pkt.TS-lastExpire >= int64(time.Second) {
+				lastExpire = msg.pkt.TS
+				if expired := tbl.Expire(msg.pkt.TS); len(expired) > 0 {
+					for _, exp := range expired {
+						if !exp.IsUDP() {
+							stream := streams[exp.ID]
+							if stream != nil {
+								if err := stream.Close(); err != nil {
+									reportErr(fmt.Errorf("pipeline: worker close stream %d: %w", exp.ID, err))
+								}
 							}
+							emitClosed(exp, stream, anomalies[exp.ID])
+							delete(streams, exp.ID)
+							delete(anomalies, exp.ID)
+						} else {
+							emitClosed(exp, nil, nil)
 						}
-						emitClosed(exp, stream, anomalies[exp.ID])
-						delete(streams, exp.ID)
-						delete(anomalies, exp.ID)
-					} else {
-						emitClosed(exp, nil, nil)
 					}
 				}
 			}
@@ -673,6 +684,10 @@ func runWorker(
 		if err := stream.Close(); err != nil {
 			reportErr(fmt.Errorf("pipeline: worker close stream %d: %w", id, err))
 		}
+	}
+
+	for id, f := range active {
+		emitClosed(f, streams[id], anomalies[id])
 	}
 
 	// Drain any flows remaining in table.
@@ -700,6 +715,34 @@ func runPostProcessing(
 ) error {
 	progress.SetStage("process")
 
+	const maxBatch = 1000
+	streamBuf := make([]model.Stream, 0, maxBatch)
+	segmentBuf := make([]store.Segment, 0, maxBatch)
+	eventBuf := make([]model.Event, 0, maxBatch)
+
+	flush := func() error {
+		if len(streamBuf) > 0 {
+			if _, err := db.InsertStreams(streamBuf); err != nil {
+				return fmt.Errorf("pipeline: flush streams: %w", err)
+			}
+			streamBuf = streamBuf[:0]
+		}
+		if len(segmentBuf) > 0 {
+			if err := db.InsertSegments(segmentBuf); err != nil {
+				return fmt.Errorf("pipeline: flush segments: %w", err)
+			}
+			segmentBuf = segmentBuf[:0]
+		}
+		if len(eventBuf) > 0 {
+			if _, err := db.InsertEvents(eventBuf); err != nil {
+				return fmt.Errorf("pipeline: flush events: %w", err)
+			}
+			totalEvents.Add(int64(len(eventBuf)))
+			eventBuf = eventBuf[:0]
+		}
+		return nil
+	}
+
 	for cs := range closedChan {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -708,17 +751,17 @@ func runPostProcessing(
 		// Extension hooks for analyzers and carver.
 		if hooks.AnalyzeStream != nil {
 			if err := hooks.AnalyzeStream(ctx, cs); err != nil {
-				return err
+				return fmt.Errorf("pipeline: analyze stream: %w", err)
 			}
 		}
 		if hooks.CarveStream != nil {
 			if err := hooks.CarveStream(ctx, cs); err != nil {
-				return err
+				return fmt.Errorf("pipeline: carve stream: %w", err)
 			}
 		}
 		if hooks.EntropyStream != nil {
 			if err := hooks.EntropyStream(ctx, cs); err != nil {
-				return err
+				return fmt.Errorf("pipeline: entropy stream: %w", err)
 			}
 		}
 
@@ -747,16 +790,12 @@ func runPostProcessing(
 		if cs.Stream != nil {
 			stRow.HasGaps = len(cs.Stream.Gaps(model.C2S)) > 0 || len(cs.Stream.Gaps(model.S2C)) > 0
 		}
-
-		if _, err := db.InsertStreams([]model.Stream{stRow}); err != nil {
-			return fmt.Errorf("pipeline: insert stream %d: %w", f.ID, err)
-		}
+		streamBuf = append(streamBuf, stRow)
 
 		// Insert segments if TCP stream reassembled.
 		if cs.Stream != nil {
-			var segRows []store.Segment
 			for _, seg := range cs.Stream.Segments(model.C2S) {
-				segRows = append(segRows, store.Segment{
+				segmentBuf = append(segmentBuf, store.Segment{
 					StreamID: f.ID,
 					Dir:      model.C2S,
 					Offset:   seg.StreamOff,
@@ -766,7 +805,7 @@ func runPostProcessing(
 				})
 			}
 			for _, seg := range cs.Stream.Segments(model.S2C) {
-				segRows = append(segRows, store.Segment{
+				segmentBuf = append(segmentBuf, store.Segment{
 					StreamID: f.ID,
 					Dir:      model.S2C,
 					Offset:   seg.StreamOff,
@@ -775,16 +814,10 @@ func runPostProcessing(
 					PacketNo: seg.PacketNo,
 				})
 			}
-			if len(segRows) > 0 {
-				if err := db.InsertSegments(segRows); err != nil {
-					return fmt.Errorf("pipeline: insert segments: %w", err)
-				}
-			}
 		}
 
 		// Insert TCP anomaly events if any.
 		if len(cs.Anomalies) > 0 {
-			var evRows []model.Event
 			srcStr := netip.AddrPortFrom(f.Initiator.IP, f.Initiator.Port).String()
 			dstStr := netip.AddrPortFrom(responder.IP, responder.Port).String()
 
@@ -807,15 +840,19 @@ func runPostProcessing(
 						"length": anom.Length,
 					},
 				}
-				evRows = append(evRows, ev)
-			}
-			if len(evRows) > 0 {
-				if _, err := db.InsertEvents(evRows); err != nil {
-					return fmt.Errorf("pipeline: insert anomaly events: %w", err)
-				}
-				totalEvents.Add(int64(len(evRows)))
+				eventBuf = append(eventBuf, ev)
 			}
 		}
+
+		if len(streamBuf) >= maxBatch || len(segmentBuf) >= maxBatch || len(eventBuf) >= maxBatch {
+			if err := flush(); err != nil {
+				return err
+			}
+		}
+	}
+
+	if err := flush(); err != nil {
+		return err
 	}
 
 	return nil
