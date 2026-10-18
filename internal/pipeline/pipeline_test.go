@@ -16,6 +16,7 @@ import (
 	"github.com/google/gopacket/layers"
 	"github.com/google/gopacket/pcapgo"
 	"github.com/tokio-drift/raccoon/internal/casedir"
+	"github.com/tokio-drift/raccoon/internal/decode"
 	"github.com/tokio-drift/raccoon/internal/model"
 	"github.com/tokio-drift/raccoon/internal/resource"
 	"github.com/tokio-drift/raccoon/internal/store"
@@ -707,5 +708,283 @@ func TestFlowsExpiredBy1sThrottleEmitted(t *testing.T) {
 	}
 	if len(streams) != numFlows {
 		t.Fatalf("expected %d stream rows in DB, got %d", numFlows, len(streams))
+	}
+}
+
+func TestWorkerSafetyInjectedPanic(t *testing.T) {
+	// Create synthetic capture with two TCP streams:
+	// Stream 1: port 10001 -> 80
+	// Stream 2: port 10002 -> 80
+	pcapFile := filepath.Join(t.TempDir(), "worker_panic.pcap")
+	f, err := os.Create(pcapFile)
+	if err != nil {
+		t.Fatalf("create pcap: %v", err)
+	}
+
+	pw := pcapgo.NewWriter(f)
+	if err := pw.WriteFileHeader(65535, layers.LinkTypeEthernet); err != nil {
+		t.Fatalf("write pcap header: %v", err)
+	}
+
+	eth := &layers.Ethernet{
+		SrcMAC:       net.HardwareAddr{0x02, 0, 0, 0, 0, 1},
+		DstMAC:       net.HardwareAddr{0x02, 0, 0, 0, 0, 2},
+		EthernetType: layers.EthernetTypeIPv4,
+	}
+	t0 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	writeTCPPacket := func(srcPort uint16, seq uint32, flags uint8, payload []byte, offsetSec int) {
+		ip := &layers.IPv4{
+			Version:  4,
+			IHL:      5,
+			TTL:      64,
+			Protocol: layers.IPProtocolTCP,
+			SrcIP:    net.IPv4(10, 0, 0, 1),
+			DstIP:    net.IPv4(10, 0, 0, 2),
+		}
+		tcp := &layers.TCP{
+			SrcPort: layers.TCPPort(srcPort),
+			DstPort: 80,
+			Seq:     seq,
+			SYN:     flags&0x02 != 0,
+			ACK:     flags&0x10 != 0,
+			FIN:     flags&0x01 != 0,
+			Window:  65535,
+		}
+		_ = tcp.SetNetworkLayerForChecksum(ip)
+		buf := gopacket.NewSerializeBuffer()
+		var pLayer gopacket.SerializableLayer
+		if len(payload) > 0 {
+			pLayer = gopacket.Payload(payload)
+		}
+		if pLayer != nil {
+			_ = gopacket.SerializeLayers(buf, gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}, eth, ip, tcp, pLayer)
+		} else {
+			_ = gopacket.SerializeLayers(buf, gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}, eth, ip, tcp)
+		}
+		data := buf.Bytes()
+		err := pw.WritePacket(gopacket.CaptureInfo{
+			Timestamp:     t0.Add(time.Duration(offsetSec) * time.Second),
+			CaptureLength: len(data),
+			Length:        len(data),
+		}, data)
+		if err != nil {
+			t.Fatalf("write packet: %v", err)
+		}
+	}
+
+	// Stream 1 (port 10001): SYN, DATA (panics here), FIN
+	writeTCPPacket(10001, 1000, 0x02, nil, 0)
+	writeTCPPacket(10001, 1001, 0x10, []byte("stream1-data"), 1)
+	writeTCPPacket(10001, 1013, 0x01, nil, 2)
+
+	// Stream 2 (port 10002): SYN, DATA, FIN
+	writeTCPPacket(10002, 2000, 0x02, nil, 3)
+	writeTCPPacket(10002, 2001, 0x10, []byte("stream2-data"), 4)
+	writeTCPPacket(10002, 2013, 0x01, nil, 5)
+
+	if err := f.Close(); err != nil {
+		t.Fatalf("close pcap: %v", err)
+	}
+
+	// Set hook to panic on stream 1 data packet
+	var panickedCount atomic.Int64
+	SetTestWorkerPanicHook(func(pkt decode.Packet) {
+		if pkt.SrcPort == 10001 && len(pkt.Payload) > 0 {
+			panickedCount.Add(1)
+			panic("injected panic on stream 1 data packet")
+		}
+	})
+	defer SetTestWorkerPanicHook(nil)
+
+	res, err := Run(context.Background(), Options{
+		PCAPPath: pcapFile,
+		BaseDir:  t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("Run failed despite worker recovery: %v", err)
+	}
+
+	if panickedCount.Load() == 0 {
+		t.Fatal("expected test hook panic to be triggered, but was not")
+	}
+
+	if res.Streams != 2 {
+		t.Errorf("res.Streams = %d, want 2", res.Streams)
+	}
+
+	db, err := store.Open(res.Case.DB())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer db.Close()
+
+	// Verify both streams exist in DB
+	streams, _, err := db.Streams(store.StreamFilter{})
+	if err != nil {
+		t.Fatalf("query streams: %v", err)
+	}
+	if len(streams) != 2 {
+		t.Fatalf("expected 2 streams in DB, got %d", len(streams))
+	}
+
+	var stream1ID, stream2ID int64
+	for _, st := range streams {
+		if st.SrcPort == 10001 {
+			stream1ID = st.ID
+		} else if st.SrcPort == 10002 {
+			stream2ID = st.ID
+		}
+	}
+	if stream1ID == 0 || stream2ID == 0 {
+		t.Fatalf("could not identify stream IDs: stream1=%d, stream2=%d", stream1ID, stream2ID)
+	}
+
+	// Verify anomaly events
+	events, _, err := db.Events(store.EventFilter{
+		Types: []model.EventType{model.EvTCPAnomaly},
+	})
+	if err != nil {
+		t.Fatalf("query events: %v", err)
+	}
+
+	// Exactly one parse_error event should be present, associated with stream 1
+	var foundParseError bool
+	for _, ev := range events {
+		if ev.StreamID == stream1ID {
+			if k, ok := ev.Details["kind"].(string); ok && k == "parse_error" {
+				foundParseError = true
+				if ev.Type != model.EvTCPAnomaly {
+					t.Errorf("event type = %v, want %v", ev.Type, model.EvTCPAnomaly)
+				}
+				if ev.Severity != model.SevWarning {
+					t.Errorf("event severity = %v, want %v", ev.Severity, model.SevWarning)
+				}
+				if !strings.Contains(ev.Title, "parse_error") {
+					t.Errorf("event title %q does not contain parse_error", ev.Title)
+				}
+			}
+		}
+		if ev.StreamID == stream2ID {
+			t.Errorf("unexpected anomaly event for stream 2: %+v", ev)
+		}
+	}
+
+	if !foundParseError {
+		t.Errorf("expected parse_error EvTCPAnomaly event for stream 1, but found none in %d events", len(events))
+	}
+}
+
+func TestWorkerSafetyInjectedPanicOnSYN(t *testing.T) {
+	pcapFile := filepath.Join(t.TempDir(), "worker_panic_syn.pcap")
+	f, err := os.Create(pcapFile)
+	if err != nil {
+		t.Fatalf("create pcap: %v", err)
+	}
+
+	pw := pcapgo.NewWriter(f)
+	if err := pw.WriteFileHeader(65535, layers.LinkTypeEthernet); err != nil {
+		t.Fatalf("write pcap header: %v", err)
+	}
+
+	eth := &layers.Ethernet{
+		SrcMAC:       net.HardwareAddr{0x02, 0, 0, 0, 0, 1},
+		DstMAC:       net.HardwareAddr{0x02, 0, 0, 0, 0, 2},
+		EthernetType: layers.EthernetTypeIPv4,
+	}
+	t0 := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+
+	writeTCPPacket := func(srcPort uint16, seq uint32, flags uint8, payload []byte, offsetSec int) {
+		ip := &layers.IPv4{
+			Version:  4,
+			IHL:      5,
+			TTL:      64,
+			Protocol: layers.IPProtocolTCP,
+			SrcIP:    net.IPv4(10, 0, 0, 1),
+			DstIP:    net.IPv4(10, 0, 0, 2),
+		}
+		tcp := &layers.TCP{
+			SrcPort: layers.TCPPort(srcPort),
+			DstPort: 80,
+			Seq:     seq,
+			SYN:     flags&0x02 != 0,
+			ACK:     flags&0x10 != 0,
+			FIN:     flags&0x01 != 0,
+			Window:  65535,
+		}
+		_ = tcp.SetNetworkLayerForChecksum(ip)
+		buf := gopacket.NewSerializeBuffer()
+		var pLayer gopacket.SerializableLayer
+		if len(payload) > 0 {
+			pLayer = gopacket.Payload(payload)
+		}
+		if pLayer != nil {
+			_ = gopacket.SerializeLayers(buf, gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}, eth, ip, tcp, pLayer)
+		} else {
+			_ = gopacket.SerializeLayers(buf, gopacket.SerializeOptions{ComputeChecksums: true, FixLengths: true}, eth, ip, tcp)
+		}
+		data := buf.Bytes()
+		err := pw.WritePacket(gopacket.CaptureInfo{
+			Timestamp:     t0.Add(time.Duration(offsetSec) * time.Second),
+			CaptureLength: len(data),
+			Length:        len(data),
+		}, data)
+		if err != nil {
+			t.Fatalf("write packet: %v", err)
+		}
+	}
+
+	// Stream 1 (port 10001): SYN (panics on SYN)
+	writeTCPPacket(10001, 1000, 0x02, nil, 0)
+
+	// Stream 2 (port 10002): SYN, DATA, FIN
+	writeTCPPacket(10002, 2000, 0x02, nil, 1)
+	writeTCPPacket(10002, 2001, 0x10, []byte("ok"), 2)
+	writeTCPPacket(10002, 2003, 0x01, nil, 3)
+
+	if err := f.Close(); err != nil {
+		t.Fatalf("close pcap: %v", err)
+	}
+
+	SetTestWorkerPanicHook(func(pkt decode.Packet) {
+		if pkt.SrcPort == 10001 {
+			panic("injected panic on SYN")
+		}
+	})
+	defer SetTestWorkerPanicHook(nil)
+
+	res, err := Run(context.Background(), Options{
+		PCAPPath: pcapFile,
+		BaseDir:  t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("Run failed: %v", err)
+	}
+
+	if res.Streams != 2 {
+		t.Errorf("res.Streams = %d, want 2", res.Streams)
+	}
+
+	db, err := store.Open(res.Case.DB())
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	defer db.Close()
+
+	events, _, err := db.Events(store.EventFilter{
+		Types: []model.EventType{model.EvTCPAnomaly},
+	})
+	if err != nil {
+		t.Fatalf("query events: %v", err)
+	}
+
+	var foundParseError bool
+	for _, ev := range events {
+		if k, ok := ev.Details["kind"].(string); ok && k == "parse_error" {
+			foundParseError = true
+		}
+	}
+	if !foundParseError {
+		t.Error("expected parse_error event for SYN panic, got none")
 	}
 }

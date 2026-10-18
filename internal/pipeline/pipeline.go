@@ -164,6 +164,26 @@ var packetPool = sync.Pool{
 	},
 }
 
+var (
+	testWorkerPanicMu   sync.RWMutex
+	testWorkerPanicHook func(pkt decode.Packet)
+)
+
+// SetTestWorkerPanicHook sets a hook for testing worker panic recovery.
+// When non-nil, workers invoke this hook during packet handling.
+func SetTestWorkerPanicHook(fn func(pkt decode.Packet)) {
+	testWorkerPanicMu.Lock()
+	testWorkerPanicHook = fn
+	testWorkerPanicMu.Unlock()
+}
+
+func getTestWorkerPanicHook() func(pkt decode.Packet) {
+	testWorkerPanicMu.RLock()
+	fn := testWorkerPanicHook
+	testWorkerPanicMu.RUnlock()
+	return fn
+}
+
 // channelCapacity calculates the bounded channel capacity per worker derived from the budget.
 func channelCapacity(b *resource.Budget) int {
 	if b == nil || b.Workers <= 0 {
@@ -568,6 +588,7 @@ func runWorker(
 	anomalies := make(map[int64][]reassembly.Anomaly)
 	sent := make(map[int64]bool)
 	active := make(map[int64]*flow.Flow)
+	panicked := make(map[int64]bool)
 	var lastExpire int64
 	var expireInit bool
 
@@ -606,21 +627,46 @@ func runWorker(
 			continue
 		}
 
-		f, dir, isNew := tbl.Lookup(msg.pkt)
-		if f != nil {
+		func() {
+			var currentFlow *flow.Flow
+			var currentDir model.Direction
+
+			defer func() {
+				if r := recover(); r != nil {
+					if currentFlow != nil {
+						streamID := currentFlow.ID
+						if !panicked[streamID] {
+							panicked[streamID] = true
+							anomalies[streamID] = append(anomalies[streamID], reassembly.Anomaly{
+								Kind:   reassembly.AnomalyParseError,
+								Dir:    currentDir,
+								Offset: 0,
+								Length: 0,
+							})
+							if s := streams[streamID]; s != nil {
+								_ = s.Close()
+							}
+						}
+					}
+				}
+			}()
+
+			f, dir, isNew := tbl.Lookup(msg.pkt)
+			if f == nil {
+				return
+			}
+			currentFlow = f
+			currentDir = dir
+
 			if isNew {
 				progress.streams.Add(1)
 				if !f.IsUDP() {
-					spool, err := reassembly.NewSpool(c.StreamsDir(), f.ID)
+					streamID := f.ID
+					spool, err := reassembly.NewSpool(c.StreamsDir(), streamID)
 					if err != nil {
-						reportErr(fmt.Errorf("pipeline: worker spool %d: %w", f.ID, err))
-						packetPool.Put(msg)
-						for rem := range in {
-							packetPool.Put(rem)
-						}
+						reportErr(fmt.Errorf("pipeline: worker spool %d: %w", streamID, err))
 						return
 					}
-					streamID := f.ID
 					stream := reassembly.NewStream(reassembly.StreamConfig{
 						ID:         streamID,
 						Proto:      f.Proto,
@@ -634,6 +680,20 @@ func runWorker(
 					streams[streamID] = stream
 					active[streamID] = f
 				}
+			}
+
+			// Invoke test hook for injected panics during packet handling.
+			if hook := getTestWorkerPanicHook(); hook != nil {
+				hook(msg.pkt)
+			}
+
+			if panicked[f.ID] {
+				if f.State == flow.StateClosed {
+					emitClosed(f, streams[f.ID], anomalies[f.ID])
+					delete(streams, f.ID)
+					delete(anomalies, f.ID)
+				}
+				return
 			}
 
 			if !f.IsUDP() {
@@ -669,12 +729,13 @@ func runWorker(
 							delete(streams, exp.ID)
 							delete(anomalies, exp.ID)
 						} else {
-							emitClosed(exp, nil, nil)
+							emitClosed(exp, nil, anomalies[exp.ID])
+							delete(anomalies, exp.ID)
 						}
 					}
 				}
 			}
-		}
+		}()
 
 		packetPool.Put(msg)
 	}
@@ -694,12 +755,10 @@ func runWorker(
 	allExpired := tbl.Expire(1<<63 - 1)
 	for _, exp := range allExpired {
 		var s *reassembly.Stream
-		var anoms []reassembly.Anomaly
 		if !exp.IsUDP() {
 			s = streams[exp.ID]
-			anoms = anomalies[exp.ID]
 		}
-		emitClosed(exp, s, anoms)
+		emitClosed(exp, s, anomalies[exp.ID])
 	}
 }
 

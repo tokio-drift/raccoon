@@ -13,6 +13,8 @@ const (
 	AnomalyOverlapConflict AnomalyKind = "overlap_conflict"
 	// AnomalyMidstream marks a stream that started without a SYN.
 	AnomalyMidstream AnomalyKind = "midstream"
+	// AnomalyParseError marks a stream where packet handling encountered an unexpected error or panic.
+	AnomalyParseError AnomalyKind = "parse_error"
 )
 
 // Anomaly describes a reassembly anomaly for a TCP_ANOMALY event.
