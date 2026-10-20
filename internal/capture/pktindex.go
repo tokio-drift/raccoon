@@ -87,6 +87,12 @@ func ReadPacketAt(pcapPath string, rec IndexRecord) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	return ReadPacketAtFile(f, format, rec)
+}
+
+// ReadPacketAtFile re-reads a single indexed packet's bytes from an already
+// open capture file whose format was returned by Detect.
+func ReadPacketAtFile(f *os.File, format Format, rec IndexRecord) ([]byte, error) {
 	switch format {
 	case FormatPCAP:
 		data := make([]byte, rec.CapLen)
