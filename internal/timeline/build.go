@@ -19,6 +19,10 @@ type Options struct {
 	// Files, if provided, supplies carved files used to link FileID onto events
 	// (such as THREAT_VERDICT events) matching by SHA-256.
 	Files []model.CarvedFile
+	// Streams, if provided, supplies stored stream rows whose first/last
+	// packet backfill a missing packet range onto events that already know
+	// their stream id.
+	Streams []model.Stream
 }
 
 // Build merges and sorts events in (ts, packetNo) order with deterministic
@@ -41,16 +45,20 @@ func Build(events []model.Event, opts ...Options) []model.Event {
 	// 2. Link FileID and verdict events.
 	linkFilesAndVerdicts(out, opt.Files)
 
-	// 3. Apply core severity rating rules (escalation only) and human titles.
+	// 3. Link evidence: packet range, stream id and file id, so every
+	// non-synthetic event points at the packets it describes (9.4).
+	linkEvidence(out, opt.Files, opt.Streams)
+
+	// 4. Apply core severity rating rules (escalation only) and human titles.
 	for i := range out {
 		out[i].Severity = Rate(out[i])
 		out[i].Title = FormatTitle(out[i])
 	}
 
-	// 4. Sort events in (ts, packetNo) order with deterministic tiebreakers.
+	// 5. Sort events in (ts, packetNo) order with deterministic tiebreakers.
 	sortEvents(out)
 
-	// 4. Assign final sequential IDs (1, 2, ..., N), updating ParentID references
+	// 6. Assign final sequential IDs (1, 2, ..., N), updating ParentID references
 	// if any child events were linked to parent events before renumbering.
 	oldToNew := make(map[int64]int64, len(out))
 	for i := range out {
