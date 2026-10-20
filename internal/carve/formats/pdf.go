@@ -41,6 +41,11 @@ func (PDF) Headers() [][]byte { return [][]byte{pdfHeader} }
 // MaxSize implements carve.Format.
 func (PDF) MaxSize() int64 { return limits.MaxCarveSize }
 
+// BoundedExtent implements carve.BoundedFormat: the scanner clamps the stream
+// length handed to Extent to the next carve-candidate header so a following
+// document cannot be swallowed by this one's %%EOF search.
+func (PDF) BoundedExtent() bool { return true }
+
 // Extent implements carve.Format. end is the absolute offset one past
 // %%EOF when the marker is found, and the clamped stream end when it is
 // not; StatusComplete additionally requires startxref within 1 KB before

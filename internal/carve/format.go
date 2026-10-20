@@ -65,6 +65,18 @@ type Format interface {
 	Extent(r io.ReaderAt, start, streamLen int64) (end int64, status string, err error)
 }
 
+// BoundedFormat is implemented by formats whose Extent must not scan past the
+// next carve-candidate header. PDF is the only such format: it searches
+// backwards for the last %%EOF, so without a bound it would swallow every
+// following document. The scanner clamps streamLen to the offset of the next
+// header match (or the stream end) before calling Extent on a bounded format.
+type BoundedFormat interface {
+	Format
+	// BoundedExtent reports whether the scanner must clamp the stream length
+	// handed to Extent to the next carve-candidate header.
+	BoundedExtent() bool
+}
+
 // readFull reads exactly n bytes at off from r. It returns ErrBounds for a
 // negative offset, a negative length or a length above the per-read cap, and a
 // wrapped io.EOF / io.ErrUnexpectedEOF when the stream is shorter than
