@@ -16,6 +16,7 @@ import (
 	dnsp "github.com/tokio-drift/raccoon/internal/proto/dns"
 	ftpp "github.com/tokio-drift/raccoon/internal/proto/ftp"
 	httpp "github.com/tokio-drift/raccoon/internal/proto/http"
+	"github.com/tokio-drift/raccoon/internal/resource"
 )
 
 // sniffBytes is how many bytes from the start of each direction are inspected
@@ -33,11 +34,14 @@ func newAnalyzerRegistry() *proto.Registry {
 }
 
 // postConfig carries the capture metadata needed to re-read UDP datagrams
-// after their flows close.
+// after their flows close, plus the case layout and disk budget the carver
+// needs.
 type postConfig struct {
 	pcapPath     string
 	pktIndexPath string
 	linkTypes    []uint16
+	carvedDir    string
+	disk         *resource.DiskCounter
 }
 
 // datagramSource re-reads UDP payloads from the capture using the packet index.
@@ -186,10 +190,11 @@ func (d *datagramSource) datagrams(refs []flow.DatagramRef) ([]proto.Datagram, e
 
 // analyzeClosed identifies and runs the analyzer for one closed flow. Events
 // are passed to emit with all stream metadata filled in. It returns the
-// identified application protocol, or "" when no analyzer matched.
-func analyzeClosed(cs *ClosedStream, reg *proto.Registry, uds *datagramSource, emit func(model.Event)) (string, error) {
+// identified application protocol (or "" when no analyzer matched) and every
+// decoded file body the analyzer produced for the carver.
+func analyzeClosed(cs *ClosedStream, reg *proto.Registry, uds *datagramSource, emit func(model.Event)) (string, []proto.FileSource, error) {
 	if cs == nil || cs.Flow == nil || reg == nil {
-		return "", nil
+		return "", nil, nil
 	}
 	f := cs.Flow
 	responder := responderEndpoint(f)
@@ -238,20 +243,20 @@ func analyzeClosed(cs *ClosedStream, reg *proto.Registry, uds *datagramSource, e
 	)
 	if f.IsUDP() {
 		if uds == nil || len(f.Datagrams) == 0 {
-			return "", nil
+			return "", nil, nil
 		}
 		var err error
 		firstC2S, err = uds.firstPayload(f.Datagrams, model.C2S)
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 		firstS2C, err = uds.firstPayload(f.Datagrams, model.S2C)
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
 	} else {
 		if cs.Stream == nil {
-			return "", nil
+			return "", nil, nil
 		}
 		firstC2S = readPrefix(cs.Stream, model.C2S)
 		firstS2C = readPrefix(cs.Stream, model.S2C)
@@ -259,18 +264,24 @@ func analyzeClosed(cs *ClosedStream, reg *proto.Registry, uds *datagramSource, e
 
 	a := reg.Find(firstC2S, firstS2C, ports)
 	if a == nil {
-		return "", nil
+		return "", nil, nil
 	}
 	meta.Proto = a.Name()
 
+	var ctx *proto.StreamContext
 	if f.IsUDP() {
 		dgs, err := uds.datagrams(f.Datagrams)
 		if err != nil {
-			return "", err
+			return "", nil, err
 		}
-		return a.Name(), a.Analyze(proto.NewDatagramContext(meta, dgs), fill)
+		ctx = proto.NewDatagramContext(meta, dgs)
+	} else {
+		ctx = proto.NewStreamContext(meta, cs.Stream)
 	}
-	return a.Name(), a.Analyze(proto.NewStreamContext(meta, cs.Stream), fill)
+	if err := a.Analyze(ctx, fill); err != nil {
+		return a.Name(), ctx.FileSources(), err
+	}
+	return a.Name(), ctx.FileSources(), nil
 }
 
 // readPrefix returns up to sniffBytes from the start of a stream direction.

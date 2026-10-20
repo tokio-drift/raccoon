@@ -24,6 +24,7 @@ import (
 	"github.com/tokio-drift/raccoon/internal/decode"
 	"github.com/tokio-drift/raccoon/internal/flow"
 	"github.com/tokio-drift/raccoon/internal/model"
+	"github.com/tokio-drift/raccoon/internal/proto"
 	"github.com/tokio-drift/raccoon/internal/reassembly"
 	"github.com/tokio-drift/raccoon/internal/resource"
 	"github.com/tokio-drift/raccoon/internal/store"
@@ -392,6 +393,8 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		pcapPath:     opts.PCAPPath,
 		pktIndexPath: c.PktIndex(),
 		linkTypes:    info.LinkTypes,
+		carvedDir:    c.CarvedDir(),
+		disk:         budget.NewDiskCounter(),
 	}
 
 	go func() {
@@ -829,13 +832,34 @@ func runPostProcessing(
 	uds := newDatagramSource(cfg)
 	defer uds.close()
 
+	carverStage, err := newCarverStage(cfg)
+	if err != nil {
+		return fmt.Errorf("pipeline: init carver: %w", err)
+	}
+
+	// pendingFile pairs a carved file with its stream id. Rows and FILE_CARVED
+	// events are written after the drain in a content order so file ids (and
+	// therefore event file_id links) are reproducible across runs.
+	type pendingFile struct {
+		res      carveResult
+		streamID int64
+	}
+	var pendingFiles []pendingFile
+
+	carveInto := func(cs *ClosedStream, appProto string, fileSources []proto.FileSource, carvedExtents map[model.Direction][]span) error {
+		return carverStage.run(cs, appProto, fileSources, func(r carveResult) {
+			pendingFiles = append(pendingFiles, pendingFile{res: r, streamID: cs.Flow.ID})
+			carvedExtents[r.carved.Dir] = append(carvedExtents[r.carved.Dir], span{start: r.carved.Start, end: r.carved.End})
+		})
+	}
+
 	handle := func(cs *ClosedStream) error {
 		if cs == nil || cs.Flow == nil {
 			return nil
 		}
 
 		// Built-in protocol analyzers run when a stream closes.
-		appProto, err := analyzeClosed(cs, reg, uds, func(e model.Event) {
+		appProto, fileSources, err := analyzeClosed(cs, reg, uds, func(e model.Event) {
 			eventBuf = append(eventBuf, e)
 		})
 		if err != nil {
@@ -950,6 +974,19 @@ func runPostProcessing(
 			}
 		}
 
+		// Carve embedded files from both stream directions and any decoded
+		// file bodies the analyzer produced, then flag any high-entropy bytes
+		// the carving did not account for.
+		carvedExtents := make(map[model.Direction][]span)
+		if err := carveInto(cs, appProto, fileSources, carvedExtents); err != nil {
+			return err
+		}
+		if err := entropyInto(cs, appProto, carvedExtents, func(e model.Event) {
+			eventBuf = append(eventBuf, e)
+		}); err != nil {
+			return err
+		}
+
 		if len(streamBuf) >= maxBatch || len(segmentBuf) >= maxBatch {
 			if err := flush(); err != nil {
 				return err
@@ -985,6 +1022,24 @@ func runPostProcessing(
 	if err := flush(); err != nil {
 		return err
 	}
+
+	// Insert carved-file rows in a content order (independent of worker
+	// interleaving) so ids are reproducible, then attach the FILE_CARVED event
+	// with the assigned id.
+	sort.SliceStable(pendingFiles, func(i, j int) bool {
+		return carveSortKey(&pendingFiles[i].res) < carveSortKey(&pendingFiles[j].res)
+	})
+	for i := range pendingFiles {
+		pf := &pendingFiles[i]
+		row := carvedFileRow(pf.res, pf.streamID)
+		id, err := db.InsertFiles([]model.CarvedFile{row})
+		if err != nil {
+			return fmt.Errorf("pipeline: insert carved file: %w", err)
+		}
+		eventBuf = append(eventBuf, carvedEvent(pf.res, pf.streamID, id, row.DisplayName))
+		progress.files.Add(1)
+	}
+
 	// Events are inserted only after every stage has completed so their ids are
 	// deterministic regardless of worker completion order.
 	sortEvents(eventBuf)
@@ -993,6 +1048,14 @@ func runPostProcessing(
 	}
 
 	return nil
+}
+
+// carveSortKey returns a content-only key for a carved file. It excludes ids
+// and the stream id (worker-assigned) so the insertion order is identical
+// across runs.
+func carveSortKey(r *carveResult) string {
+	cd := r.carved
+	return fmt.Sprintf("%s|%d|%d|%d|%d|%s", cd.SHA256, cd.Dir, cd.Start, cd.End, cd.Size, cd.Format.Name())
 }
 
 // sortEvents orders events by (ts, packetNo) and then by content-only fields.

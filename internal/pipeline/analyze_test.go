@@ -86,7 +86,14 @@ func TestEndToEndProtocolFixtures(t *testing.T) {
 				}
 			}
 
-			want := expProtocolDoc{Name: name, Events: got}
+			// want must start empty when comparing: json.Unmarshal reuses an
+			// existing slice and merges into existing maps, so aliasing got
+			// here would leak current values into the decoded golden. The seed
+			// is only needed so -update writes the freshly produced events.
+			want := expProtocolDoc{Name: name}
+			if testutil.Updating() {
+				want.Events = got
+			}
 			testutil.LoadExpected(t, filepath.Join("events", base+".json"), &want)
 			if !reflect.DeepEqual(got, want.Events) {
 				t.Errorf("events differ from golden %s\n got: %s\nwant: %s",
@@ -171,7 +178,10 @@ func assertProtocolEventMetadata(t *testing.T, db *store.DB, events []model.Even
 		t.Fatal("expected protocol events, got none")
 	}
 	for _, e := range events {
-		if !allowed[e.Proto] {
+		// Protocol events must carry an application proto. FILE_CARVED events
+		// are emitted for every stream, including ones with no matched
+		// analyzer, so they may carry the transport proto ("tcp") instead.
+		if e.Type != model.EvFileCarved && !allowed[e.Proto] {
 			t.Errorf("event proto = %q, want ftp/http/dns", e.Proto)
 		}
 		if e.StreamID == 0 {
@@ -183,7 +193,7 @@ func assertProtocolEventMetadata(t *testing.T, db *store.DB, events []model.Even
 			t.Errorf("event %s references missing stream %d", e.Type, e.StreamID)
 			continue
 		}
-		if proto != e.Proto {
+		if e.Type != model.EvFileCarved && proto != e.Proto {
 			t.Errorf("event %s proto = %q, stream %d proto = %q", e.Type, e.Proto, e.StreamID, proto)
 		}
 		if e.Src == "" || e.Dst == "" {

@@ -64,6 +64,28 @@
       }
     },
     {
+      "type": "FILE_CARVED",
+      "severity": "info",
+      "ts": 1767268800015000000,
+      "packetNo": 16,
+      "packetEnd": 16,
+      "src": "10.0.0.1:50001",
+      "dst": "10.0.0.2:30000",
+      "proto": "tcp",
+      "title": "File carved: 6c0328165683.png",
+      "details": {
+        "dir": "c2s",
+        "endOff": 89,
+        "format": "png",
+        "magicHex": "89504e470d0a1a0a",
+        "md5": "74bd489148284de3c896616baa57e1a5",
+        "sha256": "6c0328165683e4450da3aea197fe7edb89fe3d858473df79d896f75a975be172",
+        "size": 89,
+        "startOff": 0,
+        "status": "complete"
+      }
+    },
+    {
       "type": "FTP_COMMAND",
       "severity": "info",
       "ts": 1767268800021000000,

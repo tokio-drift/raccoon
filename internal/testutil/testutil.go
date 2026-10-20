@@ -42,6 +42,12 @@ func LoadExpected(t *testing.T, name string, v any) {
 	loadExpectedFile(t, path, *update, v)
 }
 
+// Updating reports whether tests are running with -update. Tests that seed the
+// value handed to LoadExpected must only do so when Updating is true: seeding
+// it during a comparison run would let json.Unmarshal merge the decoded golden
+// into live structs and maps.
+func Updating() bool { return *update }
+
 func loadExpectedFile(t *testing.T, path string, update bool, v any) {
 	t.Helper()
 	if update {

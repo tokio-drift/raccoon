@@ -2,6 +2,28 @@
   "name": "http_get_jpeg_chunked.pcap",
   "events": [
     {
+      "type": "FILE_CARVED",
+      "severity": "info",
+      "ts": 1767268800004000000,
+      "packetNo": 5,
+      "packetEnd": 5,
+      "src": "10.0.0.3:41000",
+      "dst": "10.0.0.4:8080",
+      "proto": "http",
+      "title": "File carved: img.jpg",
+      "details": {
+        "dir": "s2c",
+        "endOff": 685,
+        "format": "jpeg",
+        "magicHex": "ffd8ff",
+        "md5": "c6b1503fb0c80c4207b5984a653472c1",
+        "sha256": "bae8839289a550db2da10bf79d22866f69dcf378291a9bd41e46c85f40d4f2b5",
+        "size": 685,
+        "startOff": 0,
+        "status": "complete"
+      }
+    },
+    {
       "type": "HTTP_TRANSACTION",
       "severity": "info",
       "ts": 1767268800004000000,

@@ -65,6 +65,28 @@
       }
     },
     {
+      "type": "FILE_CARVED",
+      "severity": "info",
+      "ts": 1767268800015000000,
+      "packetNo": 16,
+      "packetEnd": 16,
+      "src": "10.0.0.2:20",
+      "dst": "10.0.0.1:31337",
+      "proto": "tcp",
+      "title": "File carved: 3b7faaf1baec.pdf",
+      "details": {
+        "dir": "c2s",
+        "endOff": 328,
+        "format": "pdf",
+        "magicHex": "255044462d",
+        "md5": "e8be1390c215c5ab3450226fa3df61f6",
+        "sha256": "3b7faaf1baec9cf4bd529d52e2ac20de2bba7972743209a722a90079764c363e",
+        "size": 328,
+        "startOff": 0,
+        "status": "complete"
+      }
+    },
+    {
       "type": "FTP_COMMAND",
       "severity": "info",
       "ts": 1767268800021000000,
