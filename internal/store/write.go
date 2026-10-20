@@ -37,6 +37,7 @@ const (
 	reqVerdict
 	reqMeta
 	reqFlush
+	reqUpdateEventSev // UPDATE events SET severity=? WHERE file_id=? AND type='FILE_CARVED'
 )
 
 type req struct {
@@ -63,7 +64,8 @@ var insertSQL = map[reqKind]string{
 		`VALUES(?,?,?,?,?,?,?) ON CONFLICT(sha256,source) DO UPDATE SET ` +
 		`status=excluded.status,score=excluded.score,total=excluded.total,` +
 		`detail_json=excluded.detail_json,checked_at=excluded.checked_at`,
-	reqMeta: `INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`,
+	reqMeta:           `INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`,
+	reqUpdateEventSev: `UPDATE events SET severity=? WHERE file_id=? AND type='FILE_CARVED'`,
 }
 
 // InsertStreams appends stream rows to the writer and returns the last id.
@@ -119,6 +121,20 @@ func (db *DB) InsertFindings(rows []model.Finding) (int64, error) {
 func (db *DB) UpsertVerdict(v model.Verdict) error {
 	r := db.newReq(reqVerdict, 1)
 	r.args[0] = []any{v.SHA256, v.Source, v.Status, v.Score, v.Total, jsonOrNil(v.Detail), v.CheckedAt}
+	return db.submit(r)
+}
+
+// UpdateEventSeverityByFileID raises the severity of every FILE_CARVED event
+// that references fileID. The update only applies when the new severity is
+// higher than the current one, enforced by the WHERE clause (SQLite compares
+// text values alphabetically; use a CASE expression to respect the rank
+// ordering: critical > warning > info).
+//
+// The caller is responsible for escalation logic (only call with a higher
+// severity than the current one).
+func (db *DB) UpdateEventSeverityByFileID(fileID int64, severity string) error {
+	r := db.newReq(reqUpdateEventSev, 1)
+	r.args[0] = []any{severity, fileID}
 	return db.submit(r)
 }
 
