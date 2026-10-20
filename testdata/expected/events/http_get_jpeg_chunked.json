@@ -1,0 +1,25 @@
+{
+  "name": "http_get_jpeg_chunked.pcap",
+  "events": [
+    {
+      "type": "HTTP_TRANSACTION",
+      "severity": "info",
+      "ts": 1767268800004000000,
+      "packetNo": 5,
+      "packetEnd": 5,
+      "src": "10.0.0.3:41000",
+      "dst": "10.0.0.4:8080",
+      "proto": "http",
+      "title": "HTTP GET /img.jpg -\u003e 200",
+      "details": {
+        "bodyLen": 685,
+        "contentType": "image/jpeg",
+        "host": "example.com",
+        "method": "GET",
+        "status": 200,
+        "url": "/img.jpg",
+        "userAgent": ""
+      }
+    }
+  ]
+}

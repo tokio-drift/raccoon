@@ -1,0 +1,105 @@
+{
+  "name": "dns_queries.pcap",
+  "events": [
+    {
+      "type": "DNS_QUERY",
+      "severity": "info",
+      "ts": 1767268800000000000,
+      "packetNo": 1,
+      "packetEnd": 2,
+      "src": "10.0.0.5:53000",
+      "dst": "10.0.0.6:53",
+      "proto": "dns",
+      "title": "DNS query: example.com (A)",
+      "details": {
+        "answers": [
+          {
+            "data": "93.184.216.34",
+            "name": "example.com",
+            "ttl": 300,
+            "type": "A"
+          }
+        ],
+        "qname": "example.com",
+        "qtype": "A",
+        "rcode": "No Error",
+        "ttl": 300
+      }
+    },
+    {
+      "type": "DNS_QUERY",
+      "severity": "info",
+      "ts": 1767268800002000000,
+      "packetNo": 3,
+      "packetEnd": 4,
+      "src": "10.0.0.5:53000",
+      "dst": "10.0.0.6:53",
+      "proto": "dns",
+      "title": "DNS query: www.example.com (A)",
+      "details": {
+        "answers": [
+          {
+            "data": "93.184.216.34",
+            "name": "www.example.com",
+            "ttl": 300,
+            "type": "A"
+          }
+        ],
+        "qname": "www.example.com",
+        "qtype": "A",
+        "rcode": "No Error",
+        "ttl": 300
+      }
+    },
+    {
+      "type": "DNS_QUERY",
+      "severity": "info",
+      "ts": 1767268800004000000,
+      "packetNo": 5,
+      "packetEnd": 6,
+      "src": "10.0.0.5:53000",
+      "dst": "10.0.0.6:53",
+      "proto": "dns",
+      "title": "DNS query: mail.example.com (A)",
+      "details": {
+        "answers": [
+          {
+            "data": "93.184.216.34",
+            "name": "mail.example.com",
+            "ttl": 300,
+            "type": "A"
+          }
+        ],
+        "qname": "mail.example.com",
+        "qtype": "A",
+        "rcode": "No Error",
+        "ttl": 300
+      }
+    },
+    {
+      "type": "DNS_QUERY",
+      "severity": "info",
+      "ts": 1767268800006000000,
+      "packetNo": 7,
+      "packetEnd": 8,
+      "src": "10.0.0.5:53000",
+      "dst": "10.0.0.6:53",
+      "proto": "dns",
+      "title": "DNS query: cdn.example.com (A)",
+      "details": {
+        "answers": [
+          {
+            "data": "93.184.216.34",
+            "name": "cdn.example.com",
+            "ttl": 300,
+            "type": "A"
+          }
+        ],
+        "qname": "cdn.example.com",
+        "qtype": "A",
+        "rcode": "No Error",
+        "ttl": 300
+      }
+    }
+  ]
+}

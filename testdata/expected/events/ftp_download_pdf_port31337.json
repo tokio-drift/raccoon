@@ -1,0 +1,82 @@
+{
+  "name": "ftp_download_pdf_port31337.pcap",
+  "events": [
+    {
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800004000000,
+      "packetNo": 5,
+      "packetEnd": 5,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt: bob",
+      "details": {
+        "command": "USER",
+        "user": "bob"
+      }
+    },
+    {
+      "type": "FTP_LOGIN_SUCCESS",
+      "severity": "warning",
+      "ts": 1767268800007000000,
+      "packetNo": 8,
+      "packetEnd": 8,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login successful: bob",
+      "details": {
+        "password": "s3cr3t",
+        "passwordPresent": true,
+        "reply": "230 Logged in",
+        "user": "bob"
+      }
+    },
+    {
+      "type": "FTP_COMMAND",
+      "severity": "info",
+      "ts": 1767268800008000000,
+      "packetNo": 9,
+      "packetEnd": 9,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP command: PORT 10,0,0,1,122,137",
+      "details": {
+        "arg": "10,0,0,1,122,137",
+        "command": "PORT"
+      }
+    },
+    {
+      "type": "FTP_COMMAND",
+      "severity": "info",
+      "ts": 1767268800010000000,
+      "packetNo": 11,
+      "packetEnd": 11,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP command: RETR plans.pdf",
+      "details": {
+        "arg": "plans.pdf",
+        "command": "RETR",
+        "filename": "plans.pdf"
+      }
+    },
+    {
+      "type": "FTP_COMMAND",
+      "severity": "info",
+      "ts": 1767268800021000000,
+      "packetNo": 22,
+      "packetEnd": 22,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP command: QUIT",
+      "details": {
+        "command": "QUIT"
+      }
+    }
+  ]
+}
