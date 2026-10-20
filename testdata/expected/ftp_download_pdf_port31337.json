@@ -19,15 +19,15 @@
       "srcPort": 20,
       "dstIp": "10.0.0.1",
       "dstPort": 31337,
-      "c2sBytes": 329,
+      "c2sBytes": 328,
       "s2cBytes": 0,
-      "c2sSha256": "7d5371d3d9d5588cdb4c7851773488380aa8e9644001ad32ba5dad8084272746",
+      "c2sSha256": "3b7faaf1baec9cf4bd529d52e2ac20de2bba7972743209a722a90079764c363e",
       "s2cSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     }
   ],
   "files": [
     {
-      "sha256": "7d5371d3d9d5588cdb4c7851773488380aa8e9644001ad32ba5dad8084272746",
+      "sha256": "3b7faaf1baec9cf4bd529d52e2ac20de2bba7972743209a722a90079764c363e",
       "ext": "pdf",
       "name": "plans.pdf",
       "status": "complete"

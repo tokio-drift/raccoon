@@ -306,6 +306,10 @@ func makeJPEG() []byte {
 	return buf.Bytes()
 }
 
+// makePDF builds a minimal PDF. It ends exactly at the %%EOF marker (no
+// trailing newline) so the whole payload is what the carver extracts: the
+// golden files[].sha256 is sha256hex of these bytes, so it must equal the
+// carved file's hash.
 func makePDF() []byte {
 	var buf bytes.Buffer
 	buf.WriteString("%PDF-1.4\n")
@@ -324,7 +328,7 @@ func makePDF() []byte {
 	}
 	buf.WriteString("trailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n")
 	fmt.Fprintf(&buf, "%d\n", xref)
-	buf.WriteString("%%EOF\n")
+	buf.WriteString("%%EOF")
 	return buf.Bytes()
 }
 
@@ -676,6 +680,36 @@ func dnsQueries() (*recorder, *clock) {
 	return r, clk
 }
 
+// randomBytes returns n pseudo-random bytes from a fixed xorshift64* state, so
+// the fixture is byte-for-byte reproducible. The payload is high entropy,
+// mostly non-printable and contains no carvable file headers.
+func randomBytes(seed uint64, n int) []byte {
+	if seed == 0 {
+		seed = 0x9E3779B97F4A7C15
+	}
+	b := make([]byte, n)
+	for i := range b {
+		seed ^= seed >> 12
+		seed ^= seed << 25
+		seed ^= seed >> 27
+		b[i] = byte((seed * 0x2545F4914F6CDD1D) >> 56)
+	}
+	return b
+}
+
+// randomData puts a single high-entropy, non-carvable payload on one TCP
+// stream. The pipeline must report no carved file and flag the run as an
+// opaque region.
+func randomData() (*recorder, *clock) {
+	r, clk := newRec()
+	c := newConn(r, clk, clientMAC, serverMAC, ipClient, ipServer, 50000, 9000, 1000, 2000)
+	c.handshake()
+	c.cSend(flagPSH|flagACK, randomBytes(0x5A5A5A5A, 16*1024))
+	c.sSend(flagACK, nil)
+	c.close()
+	return r, clk
+}
+
 func carveNonstandardPort(zipBytes []byte) (*recorder, *clock) {
 	r, clk := newRec()
 	c := newConn(r, clk, clientMAC, serverMAC, ipClient, ipServer, 50000, 4444, 1000, 2000)
@@ -789,6 +823,11 @@ func generate(outDir string) error {
 			},
 			Files: []FileExp{{SHA256: sha256hex(zipBytes), Ext: "zip", Status: "complete"}},
 		}, false},
+		{"random_data.pcap", nil, Expect{
+			Streams: []StreamExp{
+				streamExp("tcp", ipClient.String(), 50000, ipServer.String(), 9000, randomBytes(0x5A5A5A5A, 16*1024), nil),
+			},
+		}, false},
 	}
 
 	builders := map[string]func() (*recorder, *clock){
@@ -806,6 +845,7 @@ func generate(outDir string) error {
 		"http_get_jpeg_chunked.pcap":      func() (*recorder, *clock) { return httpGetJPEGChunked(jpegBytes) },
 		"dns_queries.pcap":                dnsQueries,
 		"carve_nonstandard_port.pcap":     func() (*recorder, *clock) { return carveNonstandardPort(zipBytes) },
+		"random_data.pcap":                randomData,
 	}
 
 	for i := range fixtures {

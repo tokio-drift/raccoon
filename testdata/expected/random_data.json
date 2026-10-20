@@ -1,0 +1,17 @@
+{
+  "name": "random_data.pcap",
+  "packets": 9,
+  "streams": [
+    {
+      "proto": "tcp",
+      "srcIp": "10.0.0.1",
+      "srcPort": 50000,
+      "dstIp": "10.0.0.2",
+      "dstPort": 9000,
+      "c2sBytes": 16384,
+      "s2cBytes": 0,
+      "c2sSha256": "4fd56b8a7d987edfab65643e20feec73db56d28afcb8cb7d5cef125ba9ac2f69",
+      "s2cSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}
