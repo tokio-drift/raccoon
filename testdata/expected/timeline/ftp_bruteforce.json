@@ -1,0 +1,1399 @@
+{
+  "name": "ftp_bruteforce.pcap",
+  "events": [
+    {
+      "id": 1,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800004000000,
+      "packetNo": 5,
+      "packetEnd": 5,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user00",
+      "details": {
+        "command": "USER",
+        "user": "user00"
+      }
+    },
+    {
+      "id": 2,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800007000000,
+      "packetNo": 8,
+      "packetEnd": 8,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user00",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user00"
+      }
+    },
+    {
+      "id": 3,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800008000000,
+      "packetNo": 9,
+      "packetEnd": 9,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user01",
+      "details": {
+        "command": "USER",
+        "user": "user01"
+      }
+    },
+    {
+      "id": 4,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800011000000,
+      "packetNo": 12,
+      "packetEnd": 12,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user01",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user01"
+      }
+    },
+    {
+      "id": 5,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800012000000,
+      "packetNo": 13,
+      "packetEnd": 13,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user02",
+      "details": {
+        "command": "USER",
+        "user": "user02"
+      }
+    },
+    {
+      "id": 6,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800015000000,
+      "packetNo": 16,
+      "packetEnd": 16,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user02",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user02"
+      }
+    },
+    {
+      "id": 7,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800016000000,
+      "packetNo": 17,
+      "packetEnd": 17,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user03",
+      "details": {
+        "command": "USER",
+        "user": "user03"
+      }
+    },
+    {
+      "id": 8,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800019000000,
+      "packetNo": 20,
+      "packetEnd": 20,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user03",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user03"
+      }
+    },
+    {
+      "id": 9,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800020000000,
+      "packetNo": 21,
+      "packetEnd": 21,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user04",
+      "details": {
+        "command": "USER",
+        "user": "user04"
+      }
+    },
+    {
+      "id": 10,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800023000000,
+      "packetNo": 24,
+      "packetEnd": 24,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user04",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user04"
+      }
+    },
+    {
+      "id": 11,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800024000000,
+      "packetNo": 25,
+      "packetEnd": 25,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user05",
+      "details": {
+        "command": "USER",
+        "user": "user05"
+      }
+    },
+    {
+      "id": 12,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800027000000,
+      "packetNo": 28,
+      "packetEnd": 28,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user05",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user05"
+      }
+    },
+    {
+      "id": 13,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800028000000,
+      "packetNo": 29,
+      "packetEnd": 29,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user06",
+      "details": {
+        "command": "USER",
+        "user": "user06"
+      }
+    },
+    {
+      "id": 14,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800031000000,
+      "packetNo": 32,
+      "packetEnd": 32,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user06",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user06"
+      }
+    },
+    {
+      "id": 15,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800032000000,
+      "packetNo": 33,
+      "packetEnd": 33,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user07",
+      "details": {
+        "command": "USER",
+        "user": "user07"
+      }
+    },
+    {
+      "id": 16,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800035000000,
+      "packetNo": 36,
+      "packetEnd": 36,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user07",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user07"
+      }
+    },
+    {
+      "id": 17,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800036000000,
+      "packetNo": 37,
+      "packetEnd": 37,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user08",
+      "details": {
+        "command": "USER",
+        "user": "user08"
+      }
+    },
+    {
+      "id": 18,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800039000000,
+      "packetNo": 40,
+      "packetEnd": 40,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user08",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user08"
+      }
+    },
+    {
+      "id": 19,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800040000000,
+      "packetNo": 41,
+      "packetEnd": 41,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user09",
+      "details": {
+        "command": "USER",
+        "user": "user09"
+      }
+    },
+    {
+      "id": 20,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800043000000,
+      "packetNo": 44,
+      "packetEnd": 44,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user09",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user09"
+      }
+    },
+    {
+      "id": 21,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800044000000,
+      "packetNo": 45,
+      "packetEnd": 45,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user10",
+      "details": {
+        "command": "USER",
+        "user": "user10"
+      }
+    },
+    {
+      "id": 22,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800047000000,
+      "packetNo": 48,
+      "packetEnd": 48,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user10",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user10"
+      }
+    },
+    {
+      "id": 23,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800048000000,
+      "packetNo": 49,
+      "packetEnd": 49,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user11",
+      "details": {
+        "command": "USER",
+        "user": "user11"
+      }
+    },
+    {
+      "id": 24,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800051000000,
+      "packetNo": 52,
+      "packetEnd": 52,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user11",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user11"
+      }
+    },
+    {
+      "id": 25,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800052000000,
+      "packetNo": 53,
+      "packetEnd": 53,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user12",
+      "details": {
+        "command": "USER",
+        "user": "user12"
+      }
+    },
+    {
+      "id": 26,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800055000000,
+      "packetNo": 56,
+      "packetEnd": 56,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user12",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user12"
+      }
+    },
+    {
+      "id": 27,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800056000000,
+      "packetNo": 57,
+      "packetEnd": 57,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user13",
+      "details": {
+        "command": "USER",
+        "user": "user13"
+      }
+    },
+    {
+      "id": 28,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800059000000,
+      "packetNo": 60,
+      "packetEnd": 60,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user13",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user13"
+      }
+    },
+    {
+      "id": 29,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800060000000,
+      "packetNo": 61,
+      "packetEnd": 61,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user14",
+      "details": {
+        "command": "USER",
+        "user": "user14"
+      }
+    },
+    {
+      "id": 30,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800063000000,
+      "packetNo": 64,
+      "packetEnd": 64,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user14",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user14"
+      }
+    },
+    {
+      "id": 31,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800064000000,
+      "packetNo": 65,
+      "packetEnd": 65,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user15",
+      "details": {
+        "command": "USER",
+        "user": "user15"
+      }
+    },
+    {
+      "id": 32,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800067000000,
+      "packetNo": 68,
+      "packetEnd": 68,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user15",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user15"
+      }
+    },
+    {
+      "id": 33,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800068000000,
+      "packetNo": 69,
+      "packetEnd": 69,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user16",
+      "details": {
+        "command": "USER",
+        "user": "user16"
+      }
+    },
+    {
+      "id": 34,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800071000000,
+      "packetNo": 72,
+      "packetEnd": 72,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user16",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user16"
+      }
+    },
+    {
+      "id": 35,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800072000000,
+      "packetNo": 73,
+      "packetEnd": 73,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user17",
+      "details": {
+        "command": "USER",
+        "user": "user17"
+      }
+    },
+    {
+      "id": 36,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800075000000,
+      "packetNo": 76,
+      "packetEnd": 76,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user17",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user17"
+      }
+    },
+    {
+      "id": 37,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800076000000,
+      "packetNo": 77,
+      "packetEnd": 77,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user18",
+      "details": {
+        "command": "USER",
+        "user": "user18"
+      }
+    },
+    {
+      "id": 38,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800079000000,
+      "packetNo": 80,
+      "packetEnd": 80,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user18",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user18"
+      }
+    },
+    {
+      "id": 39,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800080000000,
+      "packetNo": 81,
+      "packetEnd": 81,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user19",
+      "details": {
+        "command": "USER",
+        "user": "user19"
+      }
+    },
+    {
+      "id": 40,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800083000000,
+      "packetNo": 84,
+      "packetEnd": 84,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user19",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user19"
+      }
+    },
+    {
+      "id": 41,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800084000000,
+      "packetNo": 85,
+      "packetEnd": 85,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user20",
+      "details": {
+        "command": "USER",
+        "user": "user20"
+      }
+    },
+    {
+      "id": 42,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800087000000,
+      "packetNo": 88,
+      "packetEnd": 88,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user20",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user20"
+      }
+    },
+    {
+      "id": 43,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800088000000,
+      "packetNo": 89,
+      "packetEnd": 89,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user21",
+      "details": {
+        "command": "USER",
+        "user": "user21"
+      }
+    },
+    {
+      "id": 44,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800091000000,
+      "packetNo": 92,
+      "packetEnd": 92,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user21",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user21"
+      }
+    },
+    {
+      "id": 45,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800092000000,
+      "packetNo": 93,
+      "packetEnd": 93,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user22",
+      "details": {
+        "command": "USER",
+        "user": "user22"
+      }
+    },
+    {
+      "id": 46,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800095000000,
+      "packetNo": 96,
+      "packetEnd": 96,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user22",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user22"
+      }
+    },
+    {
+      "id": 47,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800096000000,
+      "packetNo": 97,
+      "packetEnd": 97,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user23",
+      "details": {
+        "command": "USER",
+        "user": "user23"
+      }
+    },
+    {
+      "id": 48,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800099000000,
+      "packetNo": 100,
+      "packetEnd": 100,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user23",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user23"
+      }
+    },
+    {
+      "id": 49,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800100000000,
+      "packetNo": 101,
+      "packetEnd": 101,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user24",
+      "details": {
+        "command": "USER",
+        "user": "user24"
+      }
+    },
+    {
+      "id": 50,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800103000000,
+      "packetNo": 104,
+      "packetEnd": 104,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user24",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user24"
+      }
+    },
+    {
+      "id": 51,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800104000000,
+      "packetNo": 105,
+      "packetEnd": 105,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user25",
+      "details": {
+        "command": "USER",
+        "user": "user25"
+      }
+    },
+    {
+      "id": 52,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800107000000,
+      "packetNo": 108,
+      "packetEnd": 108,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user25",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user25"
+      }
+    },
+    {
+      "id": 53,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800108000000,
+      "packetNo": 109,
+      "packetEnd": 109,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user26",
+      "details": {
+        "command": "USER",
+        "user": "user26"
+      }
+    },
+    {
+      "id": 54,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800111000000,
+      "packetNo": 112,
+      "packetEnd": 112,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user26",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user26"
+      }
+    },
+    {
+      "id": 55,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800112000000,
+      "packetNo": 113,
+      "packetEnd": 113,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user27",
+      "details": {
+        "command": "USER",
+        "user": "user27"
+      }
+    },
+    {
+      "id": 56,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800115000000,
+      "packetNo": 116,
+      "packetEnd": 116,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user27",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user27"
+      }
+    },
+    {
+      "id": 57,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800116000000,
+      "packetNo": 117,
+      "packetEnd": 117,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user28",
+      "details": {
+        "command": "USER",
+        "user": "user28"
+      }
+    },
+    {
+      "id": 58,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800119000000,
+      "packetNo": 120,
+      "packetEnd": 120,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user28",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user28"
+      }
+    },
+    {
+      "id": 59,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800120000000,
+      "packetNo": 121,
+      "packetEnd": 121,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user29",
+      "details": {
+        "command": "USER",
+        "user": "user29"
+      }
+    },
+    {
+      "id": 60,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800123000000,
+      "packetNo": 124,
+      "packetEnd": 124,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user29",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user29"
+      }
+    },
+    {
+      "id": 61,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800124000000,
+      "packetNo": 125,
+      "packetEnd": 125,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user30",
+      "details": {
+        "command": "USER",
+        "user": "user30"
+      }
+    },
+    {
+      "id": 62,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800127000000,
+      "packetNo": 128,
+      "packetEnd": 128,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user30",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user30"
+      }
+    },
+    {
+      "id": 63,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800128000000,
+      "packetNo": 129,
+      "packetEnd": 129,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user31",
+      "details": {
+        "command": "USER",
+        "user": "user31"
+      }
+    },
+    {
+      "id": 64,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800131000000,
+      "packetNo": 132,
+      "packetEnd": 132,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user31",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user31"
+      }
+    },
+    {
+      "id": 65,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800132000000,
+      "packetNo": 133,
+      "packetEnd": 133,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user32",
+      "details": {
+        "command": "USER",
+        "user": "user32"
+      }
+    },
+    {
+      "id": 66,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800135000000,
+      "packetNo": 136,
+      "packetEnd": 136,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user32",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user32"
+      }
+    },
+    {
+      "id": 67,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800136000000,
+      "packetNo": 137,
+      "packetEnd": 137,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user33",
+      "details": {
+        "command": "USER",
+        "user": "user33"
+      }
+    },
+    {
+      "id": 68,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800139000000,
+      "packetNo": 140,
+      "packetEnd": 140,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user33",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user33"
+      }
+    },
+    {
+      "id": 69,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800140000000,
+      "packetNo": 141,
+      "packetEnd": 141,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user34",
+      "details": {
+        "command": "USER",
+        "user": "user34"
+      }
+    },
+    {
+      "id": 70,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800143000000,
+      "packetNo": 144,
+      "packetEnd": 144,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user34",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user34"
+      }
+    },
+    {
+      "id": 71,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800144000000,
+      "packetNo": 145,
+      "packetEnd": 145,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user35",
+      "details": {
+        "command": "USER",
+        "user": "user35"
+      }
+    },
+    {
+      "id": 72,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800147000000,
+      "packetNo": 148,
+      "packetEnd": 148,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user35",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user35"
+      }
+    },
+    {
+      "id": 73,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800148000000,
+      "packetNo": 149,
+      "packetEnd": 149,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user36",
+      "details": {
+        "command": "USER",
+        "user": "user36"
+      }
+    },
+    {
+      "id": 74,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800151000000,
+      "packetNo": 152,
+      "packetEnd": 152,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user36",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user36"
+      }
+    },
+    {
+      "id": 75,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800152000000,
+      "packetNo": 153,
+      "packetEnd": 153,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user37",
+      "details": {
+        "command": "USER",
+        "user": "user37"
+      }
+    },
+    {
+      "id": 76,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800155000000,
+      "packetNo": 156,
+      "packetEnd": 156,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user37",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user37"
+      }
+    },
+    {
+      "id": 77,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800156000000,
+      "packetNo": 157,
+      "packetEnd": 157,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user38",
+      "details": {
+        "command": "USER",
+        "user": "user38"
+      }
+    },
+    {
+      "id": 78,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800159000000,
+      "packetNo": 160,
+      "packetEnd": 160,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user38",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user38"
+      }
+    },
+    {
+      "id": 79,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800160000000,
+      "packetNo": 161,
+      "packetEnd": 161,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for user39",
+      "details": {
+        "command": "USER",
+        "user": "user39"
+      }
+    },
+    {
+      "id": 80,
+      "type": "FTP_LOGIN_FAILED",
+      "severity": "warning",
+      "ts": 1767268800163000000,
+      "packetNo": 164,
+      "packetEnd": 164,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login failed for user39",
+      "details": {
+        "password": "wrong",
+        "passwordPresent": true,
+        "reply": "530 Login incorrect",
+        "user": "user39"
+      }
+    },
+    {
+      "id": 81,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800164000000,
+      "packetNo": 165,
+      "packetEnd": 165,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for bob",
+      "details": {
+        "command": "USER",
+        "user": "bob"
+      }
+    },
+    {
+      "id": 82,
+      "type": "FTP_LOGIN_SUCCESS",
+      "severity": "warning",
+      "ts": 1767268800167000000,
+      "packetNo": 168,
+      "packetEnd": 168,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login successful as bob",
+      "details": {
+        "password": "s3cr3t",
+        "passwordPresent": true,
+        "reply": "230 Logged in",
+        "user": "bob"
+      }
+    }
+  ]
+}

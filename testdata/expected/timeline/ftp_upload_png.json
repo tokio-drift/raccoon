@@ -1,0 +1,110 @@
+{
+  "name": "ftp_upload_png.pcap",
+  "events": [
+    {
+      "id": 1,
+      "type": "FTP_LOGIN_ATTEMPT",
+      "severity": "info",
+      "ts": 1767268800004000000,
+      "packetNo": 5,
+      "packetEnd": 5,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login attempt for bob",
+      "details": {
+        "command": "USER",
+        "user": "bob"
+      }
+    },
+    {
+      "id": 2,
+      "type": "FTP_LOGIN_SUCCESS",
+      "severity": "warning",
+      "ts": 1767268800007000000,
+      "packetNo": 8,
+      "packetEnd": 8,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP login successful as bob",
+      "details": {
+        "password": "s3cr3t",
+        "passwordPresent": true,
+        "reply": "230 Logged in",
+        "user": "bob"
+      }
+    },
+    {
+      "id": 3,
+      "type": "FTP_COMMAND",
+      "severity": "info",
+      "ts": 1767268800008000000,
+      "packetNo": 9,
+      "packetEnd": 9,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP command: PASV",
+      "details": {
+        "command": "PASV"
+      }
+    },
+    {
+      "id": 4,
+      "type": "FTP_COMMAND",
+      "severity": "info",
+      "ts": 1767268800010000000,
+      "packetNo": 11,
+      "packetEnd": 11,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP command: STOR secret.png",
+      "details": {
+        "arg": "secret.png",
+        "command": "STOR",
+        "filename": "secret.png"
+      }
+    },
+    {
+      "id": 5,
+      "type": "FILE_CARVED",
+      "severity": "info",
+      "ts": 1767268800015000000,
+      "packetNo": 16,
+      "packetEnd": 16,
+      "src": "10.0.0.1:50001",
+      "dst": "10.0.0.2:30000",
+      "proto": "tcp",
+      "title": "File carved: 6c0328165683.png (PNG, 89 B)",
+      "fileId": 1,
+      "details": {
+        "dir": "c2s",
+        "endOff": 89,
+        "format": "png",
+        "magicHex": "89504e470d0a1a0a",
+        "md5": "74bd489148284de3c896616baa57e1a5",
+        "sha256": "6c0328165683e4450da3aea197fe7edb89fe3d858473df79d896f75a975be172",
+        "size": 89,
+        "startOff": 0,
+        "status": "complete"
+      }
+    },
+    {
+      "id": 6,
+      "type": "FTP_COMMAND",
+      "severity": "info",
+      "ts": 1767268800021000000,
+      "packetNo": 22,
+      "packetEnd": 22,
+      "src": "10.0.0.1:50000",
+      "dst": "10.0.0.2:21",
+      "proto": "ftp",
+      "title": "FTP command: QUIT",
+      "details": {
+        "command": "QUIT"
+      }
+    }
+  ]
+}
