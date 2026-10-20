@@ -1,45 +1,13 @@
-// Package formats implements carve.Format for the file types the carver can
-// extract: magic-header validation, then a structure walk that finds the
-// file's end inside a reassembled stream.
 package formats
 
 import (
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io"
 
 	"github.com/tokio-drift/raccoon/internal/carve"
 	"github.com/tokio-drift/raccoon/internal/limits"
 )
-
-// jpegMaxRead caps a single marker read so a hostile length field cannot
-// drive an unbounded allocation.
-const jpegMaxRead = 1 << 20
-
-// jpegChunk is the read size used while scanning entropy-coded data.
-const jpegChunk = 64 * 1024
-
-// readAt reads exactly n bytes at off. It rejects negative offsets and
-// oversized requests, and surfaces short reads as io.EOF /
-// io.ErrUnexpectedEOF from the underlying ReaderAt.
-func readAt(r io.ReaderAt, off, n int64) ([]byte, error) {
-	if off < 0 || n < 0 || n > jpegMaxRead {
-		return nil, fmt.Errorf("jpeg: read(off=%d, n=%d): %w", off, n, carve.ErrBounds)
-	}
-	if n == 0 {
-		return []byte{}, nil
-	}
-	buf := make([]byte, n)
-	got, err := r.ReadAt(buf, off)
-	if int64(got) == n {
-		return buf, nil
-	}
-	if err == nil {
-		err = io.ErrUnexpectedEOF
-	}
-	return nil, fmt.Errorf("jpeg: read %d bytes at %d: %w", n, off, err)
-}
 
 // JPEG carves JFIF/Exif JPEG images. It validates the FF D8 FF header, walks
 // marker segments by their length fields up to the start-of-scan marker, and
@@ -148,10 +116,10 @@ func (JPEG) Extent(r io.ReaderAt, start, streamLen int64) (end int64, status str
 // jpegScanEntropy scans entropy-coded data starting at pos for the FF D9
 // end-of-image marker and returns the offset one past it.
 func jpegScanEntropy(r io.ReaderAt, pos, limit int64) (int64, string, error) {
-	buf := make([]byte, jpegChunk)
+	buf := make([]byte, scanChunk)
 	prevFF := false
 	for pos < limit {
-		n := int64(jpegChunk)
+		n := int64(scanChunk)
 		if limit-pos < n {
 			n = limit - pos
 		}
@@ -183,9 +151,4 @@ func jpegScanEntropy(r io.ReaderAt, pos, limit int64) (int64, string, error) {
 		}
 	}
 	return limit, carve.StatusTruncated, nil
-}
-
-// isEOF reports whether err is a short-read error.
-func isEOF(err error) bool {
-	return errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
 }
