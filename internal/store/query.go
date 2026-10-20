@@ -362,6 +362,18 @@ func (db *DB) Verdicts(sha string) ([]model.Verdict, error) {
 	return out, nil
 }
 
+// Counts returns the total number of events, carved files and streams stored
+// for a case. It is used by the case metadata endpoint.
+func (db *DB) Counts() (events, files, streams int64, err error) {
+	err = db.conn.QueryRow(
+		`SELECT (SELECT COUNT(*) FROM events),(SELECT COUNT(*) FROM files),(SELECT COUNT(*) FROM streams)`).
+		Scan(&events, &files, &streams)
+	if err != nil {
+		return 0, 0, 0, fmt.Errorf("store: counts: %w", err)
+	}
+	return events, files, streams, nil
+}
+
 // Meta returns all case metadata key/value pairs.
 func (db *DB) Meta() (map[string]string, error) {
 	rows, err := db.conn.Query("SELECT key,value FROM meta ORDER BY key ASC")

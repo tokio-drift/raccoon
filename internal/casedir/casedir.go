@@ -68,6 +68,11 @@ type Case struct {
 	Meta Meta
 }
 
+// ValidID reports whether id has the canonical case id form
+// YYYYMMDD-HHMMSS-<6 hex>. Callers that build paths from untrusted ids (the
+// HTTP API) must check this before joining.
+func ValidID(id string) bool { return idRe.MatchString(id) }
+
 // NewID returns a case id of the form YYYYMMDD-HHMMSS-<6 hex>.
 func NewID() (string, error) {
 	var b [3]byte

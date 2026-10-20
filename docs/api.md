@@ -98,8 +98,8 @@ Case metadata and progress.
 ```
 
 `status` is one of `queued`, `running`, `ready`, `failed`.
-`stage` is one of `capture`, `decode`, `reassemble`, `analyze`, `carve`, `intel`,
-`timeline`, `done`.
+`stage` is the pipeline stage reported by progress updates (`read`,
+`process`); a finished case reports `done` with `progress` 100.
 
 ---
 
@@ -112,7 +112,7 @@ Query parameters (all optional):
 | Name | Meaning |
 |---|---|
 | `severity` | comma-separated set: `info,warning,critical` |
-| `type` | event type, e.g. `FTP_LOGIN_FAILED` |
+| `type` | comma-separated set of event types, e.g. `FTP_LOGIN_FAILED,HTTP_TRANSACTION` |
 | `phase` | `recon,access,action,exfil,c2` |
 | `proto` | `ftp`, `ftp-data`, `http`, `dns`, `tcp`, `udp`, `unknown` |
 | `q` | free-text search over title and details |
