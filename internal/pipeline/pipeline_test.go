@@ -2,10 +2,14 @@ package pipeline
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -987,4 +991,393 @@ func TestWorkerSafetyInjectedPanicOnSYN(t *testing.T) {
 	if !foundParseError {
 		t.Error("expected parse_error event for SYN panic, got none")
 	}
+}
+
+// expStream mirrors the stream entry of testdata/expected/*.json.
+type expStream struct {
+	Proto     string `json:"proto"`
+	SrcIP     string `json:"srcIp"`
+	SrcPort   uint16 `json:"srcPort"`
+	DstIP     string `json:"dstIp"`
+	DstPort   uint16 `json:"dstPort"`
+	C2SBytes  int    `json:"c2sBytes"`
+	S2CBytes  int    `json:"s2cBytes"`
+	Midstream bool   `json:"midstream"`
+	HasGaps   bool   `json:"hasGaps"`
+}
+
+type expDoc struct {
+	Name    string      `json:"name"`
+	Packets int         `json:"packets"`
+	Streams []expStream `json:"streams"`
+}
+
+func TestSortEvents(t *testing.T) {
+	events := []model.Event{
+		{TS: 20, PacketNo: 5, Src: "b", Type: model.EvTCPAnomaly, Title: "x"},
+		{TS: 10, PacketNo: 9, Src: "a", Type: model.EvTCPAnomaly, Title: "y"},
+		{TS: 10, PacketNo: 2, Src: "z", Type: model.EvTCPAnomaly, Title: "z"},
+		{TS: 10, PacketNo: 2, Src: "a", Type: model.EvTCPAnomaly, Title: "a"},
+		{TS: 10, PacketNo: 2, Src: "a", Type: model.EvTCPAnomaly, Title: "b",
+			Details: map[string]any{"k": "v"}},
+	}
+	sortEvents(events)
+
+	var got []string
+	for _, e := range events {
+		got = append(got, e.Src+"/"+e.Title)
+	}
+	want := []string{"a/a", "a/b", "z/z", "a/y", "b/x"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("order = %v, want %v", got, want)
+	}
+
+	// Sorting is stable and repeated calls are a no-op.
+	second := append([]model.Event(nil), events...)
+	sortEvents(second)
+	for i := range events {
+		if events[i].Src != second[i].Src || events[i].Title != second[i].Title {
+			t.Fatalf("sort not deterministic at %d: %v vs %v", i, events[i], second[i])
+		}
+	}
+}
+
+func TestDeterministicOutput(t *testing.T) {
+	fixtures := []string{
+		"tcp_gap.pcap",
+		"tcp_midstream.pcap",
+		"tcp_overlap_conflict.pcap",
+		"tcp_portreuse.pcap",
+	}
+	budget, err := resource.NewBudget(256*1024*1024, 0, 4)
+	if err != nil {
+		t.Fatalf("NewBudget: %v", err)
+	}
+
+	run := func(name string) string {
+		t.Helper()
+		res, err := Run(context.Background(), Options{
+			PCAPPath: testutil.Pcap(t, name),
+			BaseDir:  t.TempDir(),
+			Budget:   budget,
+		})
+		if err != nil {
+			t.Fatalf("%s: Run: %v", name, err)
+		}
+		db, err := store.Open(res.Case.DB())
+		if err != nil {
+			t.Fatalf("%s: open DB: %v", name, err)
+		}
+		defer db.Close()
+
+		verifyEventIDOrder(t, db)
+		return normalizedDump(t, db)
+	}
+
+	for _, name := range fixtures {
+		first := run(name)
+		second := run(name)
+		if first != second {
+			t.Errorf("%s: normalized DB content differs between runs\n--- first ---\n%s\n--- second ---\n%s",
+				name, first, second)
+		}
+	}
+}
+
+func TestMetadataKeys(t *testing.T) {
+	res, err := Run(context.Background(), Options{
+		PCAPPath: testutil.Pcap(t, "tcp_gap.pcap"),
+		BaseDir:  t.TempDir(),
+	})
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	db, err := store.Open(res.Case.DB())
+	if err != nil {
+		t.Fatalf("open DB: %v", err)
+	}
+	defer db.Close()
+
+	meta, err := db.Meta()
+	if err != nil {
+		t.Fatalf("Meta: %v", err)
+	}
+	want := map[string]string{
+		"pcap_name":   "tcp_gap.pcap",
+		"pcap_sha256": res.PcapSHA256,
+		"pcap_size":   strconv.FormatInt(res.PcapSize, 10),
+		"packets":     strconv.FormatInt(res.Packets, 10),
+		"streams":     strconv.FormatInt(res.Streams, 10),
+		"max_mem":     "2147483648",
+		"max_disk":    "0",
+	}
+	for k, v := range want {
+		if meta[k] != v {
+			t.Errorf("meta[%q] = %q, want %q", k, meta[k], v)
+		}
+	}
+	if meta["pcap_sha256"] == "" {
+		t.Errorf("meta[pcap_sha256] is empty")
+	}
+	if meta["tool_version"] == "" {
+		t.Errorf("meta[tool_version] is empty")
+	}
+	if meta["duration_ns"] == "" || meta["duration_ns"] == "0" {
+		t.Errorf("meta[duration_ns] = %q, want positive", meta["duration_ns"])
+	}
+	if meta["workers"] == "" {
+		t.Errorf("meta[workers] missing")
+	}
+}
+
+func TestEndToEndTCPFixtures(t *testing.T) {
+	fixtures := []string{
+		"tcp_basic.pcap",
+		"tcp_gap.pcap",
+		"tcp_midstream.pcap",
+		"tcp_ooo.pcap",
+		"tcp_overlap_conflict.pcap",
+		"tcp_portreuse.pcap",
+		"tcp_retrans.pcap",
+		"tcp_wrap.pcap",
+	}
+	for _, name := range fixtures {
+		name := name
+		t.Run(strings.TrimSuffix(name, filepath.Ext(name)), func(t *testing.T) {
+			var exp expDoc
+			testutil.LoadExpected(t, strings.TrimSuffix(name, filepath.Ext(name))+".json", &exp)
+
+			budget, err := resource.NewBudget(256*1024*1024, 0, 2)
+			if err != nil {
+				t.Fatalf("NewBudget: %v", err)
+			}
+			res, err := Run(context.Background(), Options{
+				PCAPPath: testutil.Pcap(t, name),
+				BaseDir:  t.TempDir(),
+				Budget:   budget,
+			})
+			if err != nil {
+				t.Fatalf("Run: %v", err)
+			}
+			db, err := store.Open(res.Case.DB())
+			if err != nil {
+				t.Fatalf("open DB: %v", err)
+			}
+			defer db.Close()
+
+			streams, _, err := db.Streams(store.StreamFilter{})
+			if err != nil {
+				t.Fatalf("query streams: %v", err)
+			}
+			if len(streams) != len(exp.Streams) {
+				t.Fatalf("DB streams = %d, want %d", len(streams), len(exp.Streams))
+			}
+
+			used := make([]bool, len(streams))
+			for _, want := range exp.Streams {
+				match := -1
+				for i, got := range streams {
+					if used[i] {
+						continue
+					}
+					if got.Proto == want.Proto &&
+						got.SrcIP == want.SrcIP && int(got.SrcPort) == int(want.SrcPort) &&
+						got.DstIP == want.DstIP && int(got.DstPort) == int(want.DstPort) &&
+						int(got.BytesC2S) == want.C2SBytes && int(got.BytesS2C) == want.S2CBytes &&
+						got.HasGaps == want.HasGaps && got.Midstream == want.Midstream {
+						match = i
+						break
+					}
+				}
+				if match < 0 {
+					t.Errorf("no DB stream matches expected %+v; DB streams = %+v", want, streams)
+					continue
+				}
+				used[match] = true
+			}
+		})
+	}
+}
+
+// verifyEventIDOrder asserts that event ids were assigned in (ts, packetNo)
+// order, so reading by (ts, id) yields the required (ts, packetNo, id) ordering.
+func verifyEventIDOrder(t *testing.T, db *store.DB) {
+	t.Helper()
+	rows, err := db.Conn().Query(`SELECT ts, packet_no, id FROM events ORDER BY id ASC`)
+	if err != nil {
+		t.Fatalf("query event order: %v", err)
+	}
+	defer rows.Close()
+
+	var prevTS, prevPacket int64
+	first := true
+	for rows.Next() {
+		var ts, packetNo, id int64
+		if err := rows.Scan(&ts, &packetNo, &id); err != nil {
+			t.Fatalf("scan event order: %v", err)
+		}
+		if !first && (ts < prevTS || (ts == prevTS && packetNo < prevPacket)) {
+			t.Fatalf("event id %d is out of (ts, packet_no) order: (%d,%d) after (%d,%d)",
+				id, ts, packetNo, prevTS, prevPacket)
+		}
+		prevTS, prevPacket = ts, packetNo
+		first = false
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate event order: %v", err)
+	}
+}
+
+// normalizedDump renders the semantic content of a case database so that two
+// runs can be compared without depending on internal auto-increment ids or
+// wall-clock metadata.
+func normalizedDump(t *testing.T, db *store.DB) string {
+	t.Helper()
+	conn := db.Conn()
+	var out strings.Builder
+
+	// Streams: assign canonical ids in content order.
+	type streamRec struct {
+		id, parent int64
+		fields     []any
+	}
+	rows, err := conn.Query(`SELECT id,coalesce(parent_id,0),proto,src_ip,src_port,dst_ip,dst_port,` +
+		`start_ts,end_ts,bytes_c2s,bytes_s2c,packets,first_packet,last_packet,midstream,has_gaps,udp` +
+		` FROM streams`)
+	if err != nil {
+		t.Fatalf("dump streams: %v", err)
+	}
+	var recs []streamRec
+	for rows.Next() {
+		var r streamRec
+		var proto, srcIP, dstIP string
+		var srcPort, dstPort, start, end, c2s, s2c, packets, first, last, mid, gaps, udp int64
+		if err := rows.Scan(&r.id, &r.parent, &proto, &srcIP, &srcPort, &dstIP, &dstPort,
+			&start, &end, &c2s, &s2c, &packets, &first, &last, &mid, &gaps, &udp); err != nil {
+			t.Fatalf("scan stream: %v", err)
+		}
+		r.fields = []any{proto, srcIP, srcPort, dstIP, dstPort, start, end, c2s, s2c,
+			packets, first, last, mid, gaps, udp}
+		recs = append(recs, r)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate streams: %v", err)
+	}
+	sort.SliceStable(recs, func(i, j int) bool {
+		return fmt.Sprint(recs[i].fields) < fmt.Sprint(recs[j].fields)
+	})
+	canon := make(map[int64]int, len(recs))
+	for i, r := range recs {
+		canon[r.id] = i + 1
+	}
+	for i, r := range recs {
+		parent := int64(0)
+		if r.parent != 0 {
+			parent = int64(canon[r.parent])
+		}
+		fmt.Fprintf(&out, "stream %d parent=%d %v\n", i+1, parent, r.fields)
+	}
+
+	// Segments: canonicalise stream ids, then order by content.
+	type segRec struct {
+		stream, dir, off, length, ts, packet int64
+	}
+	rows, err = conn.Query(`SELECT stream_id,dir,stream_off,length,ts,packet_no FROM segments`)
+	if err != nil {
+		t.Fatalf("dump segments: %v", err)
+	}
+	var segs []segRec
+	for rows.Next() {
+		var s segRec
+		if err := rows.Scan(&s.stream, &s.dir, &s.off, &s.length, &s.ts, &s.packet); err != nil {
+			t.Fatalf("scan segment: %v", err)
+		}
+		segs = append(segs, s)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate segments: %v", err)
+	}
+	sort.SliceStable(segs, func(i, j int) bool {
+		a, b := segs[i], segs[j]
+		if ca, cb := canon[a.stream], canon[b.stream]; ca != cb {
+			return ca < cb
+		}
+		if a.dir != b.dir {
+			return a.dir < b.dir
+		}
+		if a.off != b.off {
+			return a.off < b.off
+		}
+		if a.length != b.length {
+			return a.length < b.length
+		}
+		if a.ts != b.ts {
+			return a.ts < b.ts
+		}
+		return a.packet < b.packet
+	})
+	for _, s := range segs {
+		fmt.Fprintf(&out, "segment stream=%d dir=%d off=%d len=%d ts=%d pkt=%d\n",
+			canon[s.stream], s.dir, s.off, s.length, s.ts, s.packet)
+	}
+
+	// Events: order by content and canonicalise stream references. Internal
+	// event ids are intentionally omitted; their ordering is asserted separately.
+	type eventRec struct{ fields []string }
+	rows, err = conn.Query(`SELECT ts,packet_no,packet_end,type,severity,phase,stream_id,src,dst,` +
+		`proto,title,details_json,explain,parent_id,file_id,finding_ids FROM events`)
+	if err != nil {
+		t.Fatalf("dump events: %v", err)
+	}
+	var evs []eventRec
+	for rows.Next() {
+		var ts, packetNo, packetEnd int64
+		var typ, severity, phase, src, dst, proto, title, explain string
+		var streamID, parentID, fileID sql.NullInt64
+		var details, findingIDs sql.NullString
+		if err := rows.Scan(&ts, &packetNo, &packetEnd, &typ, &severity, &phase, &streamID,
+			&src, &dst, &proto, &title, &details, &explain, &parentID, &fileID, &findingIDs); err != nil {
+			t.Fatalf("scan event: %v", err)
+		}
+		sid := int64(0)
+		if streamID.Valid && streamID.Int64 != 0 {
+			sid = int64(canon[streamID.Int64])
+		}
+		evs = append(evs, eventRec{fields: []string{
+			fmt.Sprint(ts), fmt.Sprint(packetNo), fmt.Sprint(packetEnd), typ, severity, phase,
+			fmt.Sprint(sid), src, dst, proto, title, details.String, explain,
+			fmt.Sprint(parentID.Int64), fmt.Sprint(fileID.Int64), findingIDs.String,
+		}})
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate events: %v", err)
+	}
+	sort.SliceStable(evs, func(i, j int) bool {
+		return strings.Join(evs[i].fields, "\x00") < strings.Join(evs[j].fields, "\x00")
+	})
+	for _, e := range evs {
+		fmt.Fprintf(&out, "event %s\n", strings.Join(e.fields, "|"))
+	}
+
+	// Meta: exclude wall-clock duration; everything else must be reproducible.
+	rows, err = conn.Query(`SELECT key,value FROM meta WHERE key <> 'duration_ns' ORDER BY key`)
+	if err != nil {
+		t.Fatalf("dump meta: %v", err)
+	}
+	for rows.Next() {
+		var k, v string
+		if err := rows.Scan(&k, &v); err != nil {
+			t.Fatalf("scan meta: %v", err)
+		}
+		fmt.Fprintf(&out, "meta %s=%s\n", k, v)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		t.Fatalf("iterate meta: %v", err)
+	}
+
+	return out.String()
 }

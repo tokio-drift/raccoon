@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -381,21 +383,20 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		}(w, workerChans[w])
 	}
 
-	// Wait for workers to finish, then close closedStreamChan.
-	go func() {
-		workerWg.Wait()
-		close(closedStreamChan)
-	}()
-
 	// 8. Launch post-processing & store writer stage concurrently.
 	var postWg sync.WaitGroup
 	postWg.Add(1)
 	var totalEvents atomic.Int64
 	var postErr error
+	postCfg := postConfig{
+		pcapPath:     opts.PCAPPath,
+		pktIndexPath: c.PktIndex(),
+		linkTypes:    info.LinkTypes,
+	}
 
 	go func() {
 		defer postWg.Done()
-		postErr = runPostProcessing(ctx, closedStreamChan, db, opts.Hooks, progress, &totalEvents)
+		postErr = runPostProcessing(ctx, closedStreamChan, db, opts.Hooks, progress, &totalEvents, postCfg)
 		if postErr != nil {
 			cancel()
 		}
@@ -493,6 +494,14 @@ readLoop:
 	if err := idxBuf.Flush(); err != nil && readErr == nil {
 		readErr = fmt.Errorf("pipeline: flush packet index: %w", err)
 	}
+
+	// Close the closed-stream channel only after the packet index is durable:
+	// UDP flow analysis re-reads datagrams through the index when the channel
+	// drains. Workers may still be finishing, so the close waits for them too.
+	go func() {
+		workerWg.Wait()
+		close(closedStreamChan)
+	}()
 
 	// Wait for workers and post-processing to complete.
 	workerWg.Wait()
@@ -771,6 +780,7 @@ func runPostProcessing(
 	hooks Hooks,
 	progress *Progress,
 	totalEvents *atomic.Int64,
+	cfg postConfig,
 ) error {
 	progress.SetStage("process")
 
@@ -792,19 +802,44 @@ func runPostProcessing(
 			}
 			segmentBuf = segmentBuf[:0]
 		}
-		if len(eventBuf) > 0 {
-			if _, err := db.InsertEvents(eventBuf); err != nil {
-				return fmt.Errorf("pipeline: flush events: %w", err)
-			}
-			totalEvents.Add(int64(len(eventBuf)))
-			eventBuf = eventBuf[:0]
-		}
 		return nil
 	}
 
-	for cs := range closedChan {
-		if ctx.Err() != nil {
-			return ctx.Err()
+	flushEvents := func() error {
+		if len(eventBuf) == 0 {
+			return nil
+		}
+		// Events were sorted before this call, so SQLite assigns ascending ids
+		// in (ts, packetNo) order and the table stays ordered by (ts, packetNo, id).
+		for start := 0; start < len(eventBuf); start += maxBatch {
+			end := start + maxBatch
+			if end > len(eventBuf) {
+				end = len(eventBuf)
+			}
+			if _, err := db.InsertEvents(eventBuf[start:end]); err != nil {
+				return fmt.Errorf("pipeline: flush events: %w", err)
+			}
+			totalEvents.Add(int64(end - start))
+		}
+		eventBuf = eventBuf[:0]
+		return nil
+	}
+
+	reg := newAnalyzerRegistry()
+	uds := newDatagramSource(cfg)
+	defer uds.close()
+
+	handle := func(cs *ClosedStream) error {
+		if cs == nil || cs.Flow == nil {
+			return nil
+		}
+
+		// Built-in protocol analyzers run when a stream closes.
+		appProto, err := analyzeClosed(cs, reg, uds, func(e model.Event) {
+			eventBuf = append(eventBuf, e)
+		})
+		if err != nil {
+			return fmt.Errorf("pipeline: analyze stream: %w", err)
 		}
 
 		// Extension hooks for analyzers and carver.
@@ -828,6 +863,15 @@ func runPostProcessing(
 		f := cs.Flow
 		responder := responderEndpoint(f)
 
+		// For TCP, report the bytes actually delivered to the stream rather than
+		// raw payload totals: retransmissions and trimmed overlaps must not
+		// inflate the counts. UDP has no reassembly, so flow totals are exact.
+		bytesC2S, bytesS2C := f.BytesC2S, f.BytesS2C
+		if cs.Stream != nil {
+			bytesC2S = cs.Stream.Len(model.C2S)
+			bytesS2C = cs.Stream.Len(model.S2C)
+		}
+
 		stRow := model.Stream{
 			ID:          f.ID,
 			Proto:       f.Proto,
@@ -837,13 +881,16 @@ func runPostProcessing(
 			DstPort:     responder.Port,
 			StartTS:     f.StartTS,
 			EndTS:       f.EndTS,
-			BytesC2S:    f.BytesC2S,
-			BytesS2C:    f.BytesS2C,
+			BytesC2S:    bytesC2S,
+			BytesS2C:    bytesS2C,
 			Packets:     f.Packets,
 			FirstPacket: f.FirstPacket,
 			LastPacket:  f.LastPacket,
 			Midstream:   f.Midstream,
 			UDP:         f.IsUDP(),
+		}
+		if appProto != "" {
+			stRow.Proto = appProto
 		}
 
 		if cs.Stream != nil {
@@ -903,18 +950,99 @@ func runPostProcessing(
 			}
 		}
 
-		if len(streamBuf) >= maxBatch || len(segmentBuf) >= maxBatch || len(eventBuf) >= maxBatch {
+		if len(streamBuf) >= maxBatch || len(segmentBuf) >= maxBatch {
 			if err := flush(); err != nil {
 				return err
 			}
+		}
+		return nil
+	}
+
+	// UDP flows are analyzed after the closed-stream channel drains: by then
+	// the reader has flushed the packet index that datagram re-reads rely on.
+	var pendingUDP []*ClosedStream
+	for cs := range closedChan {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if cs != nil && cs.Flow != nil && cs.Flow.IsUDP() {
+			pendingUDP = append(pendingUDP, cs)
+			continue
+		}
+		if err := handle(cs); err != nil {
+			return err
+		}
+	}
+	for _, cs := range pendingUDP {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if err := handle(cs); err != nil {
+			return err
 		}
 	}
 
 	if err := flush(); err != nil {
 		return err
 	}
+	// Events are inserted only after every stage has completed so their ids are
+	// deterministic regardless of worker completion order.
+	sortEvents(eventBuf)
+	if err := flushEvents(); err != nil {
+		return err
+	}
 
 	return nil
+}
+
+// sortEvents orders events by (ts, packetNo) and then by content-only fields.
+// Content-only tiebreakers (no ids) keep the order identical across runs even
+// when flows are spread over different workers.
+func sortEvents(events []model.Event) {
+	sort.SliceStable(events, func(i, j int) bool {
+		a, b := &events[i], &events[j]
+		if a.TS != b.TS {
+			return a.TS < b.TS
+		}
+		if a.PacketNo != b.PacketNo {
+			return a.PacketNo < b.PacketNo
+		}
+		if a.PacketEnd != b.PacketEnd {
+			return a.PacketEnd < b.PacketEnd
+		}
+		if a.Src != b.Src {
+			return a.Src < b.Src
+		}
+		if a.Dst != b.Dst {
+			return a.Dst < b.Dst
+		}
+		if a.Type != b.Type {
+			return a.Type < b.Type
+		}
+		if a.Severity != b.Severity {
+			return a.Severity < b.Severity
+		}
+		if a.Title != b.Title {
+			return a.Title < b.Title
+		}
+		if a.Explain != b.Explain {
+			return a.Explain < b.Explain
+		}
+		return detailsKey(a) < detailsKey(b)
+	})
+}
+
+// detailsKey returns a deterministic representation of an event's details.
+// encoding/json sorts object keys, so equal maps always encode identically.
+func detailsKey(e *model.Event) string {
+	if e.Details == nil {
+		return ""
+	}
+	b, err := json.Marshal(e.Details)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 func responderEndpoint(f *flow.Flow) flow.Endpoint {
