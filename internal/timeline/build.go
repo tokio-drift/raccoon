@@ -41,9 +41,10 @@ func Build(events []model.Event, opts ...Options) []model.Event {
 	// 2. Link FileID and verdict events.
 	linkFilesAndVerdicts(out, opt.Files)
 
-	// 3. Apply core severity rating rules (escalation only).
+	// 3. Apply core severity rating rules (escalation only) and human titles.
 	for i := range out {
 		out[i].Severity = Rate(out[i])
+		out[i].Title = FormatTitle(out[i])
 	}
 
 	// 4. Sort events in (ts, packetNo) order with deterministic tiebreakers.
