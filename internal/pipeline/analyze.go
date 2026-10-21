@@ -42,6 +42,7 @@ type postConfig struct {
 	linkTypes    []uint16
 	carvedDir    string
 	disk         *resource.DiskCounter
+	maxFileSize  int64
 }
 
 // datagramSource re-reads UDP payloads from the capture using the packet index.

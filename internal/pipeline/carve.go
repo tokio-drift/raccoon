@@ -51,6 +51,7 @@ func newCarverStage(cfg postConfig) (*carver, error) {
 	s, err := carve.NewScanner(carve.Config{
 		Registry:  newFormatRegistry(),
 		CarvedDir: cfg.carvedDir,
+		MaxSize:   cfg.maxFileSize,
 		Disk:      cfg.disk,
 	})
 	if err != nil {

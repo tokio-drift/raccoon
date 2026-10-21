@@ -130,6 +130,10 @@ type Options struct {
 	// Hooks provides extension hooks for post-processing stages.
 	Hooks Hooks
 
+	// MaxFileSize, when > 0, caps a single carved file. Zero uses each format's
+	// built-in limit.
+	MaxFileSize int64
+
 	// Progress, if provided, receives atomic progress updates.
 	Progress *Progress
 
@@ -395,6 +399,7 @@ func Run(ctx context.Context, opts Options) (*Result, error) {
 		linkTypes:    info.LinkTypes,
 		carvedDir:    c.CarvedDir(),
 		disk:         budget.NewDiskCounter(),
+		maxFileSize:  opts.MaxFileSize,
 	}
 
 	go func() {
@@ -848,6 +853,7 @@ func runPostProcessing(
 	type pendingFile struct {
 		res      carveResult
 		streamID int64
+		row      model.CarvedFile
 	}
 	var pendingFiles []pendingFile
 
@@ -1042,6 +1048,8 @@ func runPostProcessing(
 			return fmt.Errorf("pipeline: insert carved file: %w", err)
 		}
 		eventBuf = append(eventBuf, carvedEvent(pf.res, pf.streamID, id, row.DisplayName))
+		row.ID = id
+		pf.row = row
 		progress.files.Add(1)
 	}
 
@@ -1050,6 +1058,15 @@ func runPostProcessing(
 	sortEvents(eventBuf)
 	if err := flushEvents(); err != nil {
 		return err
+	}
+
+	if hooks.IntelEnqueue != nil {
+		for i := range pendingFiles {
+			file := pendingFiles[i].row
+			if err := hooks.IntelEnqueue(ctx, &file); err != nil {
+				return fmt.Errorf("pipeline: intel enqueue: %w", err)
+			}
+		}
 	}
 
 	return nil
