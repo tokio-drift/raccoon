@@ -4,7 +4,7 @@
 #
 # For every TCP stream index in <pcap>, compares the bytes Wireshark reassembles
 # (tshark -q -z follow,tcp,raw,<n>) against RACCOON's own stream dump produced
-# by the hidden `raccoon debug dump-stream --pcap <pcap> --stream <n>` command
+# by the `raccoon debug dump-stream --pcap <pcap> --stream <n>` command
 # (added in Task 10.7, internal/cli).
 #
 # Exits 0 with a message if tshark is not installed. Exits 1 on any stream
@@ -57,12 +57,23 @@ if ! "$bin" help 2>/dev/null | grep -q debug || ! "$bin" debug 2>/dev/null | gre
 	exit 0
 fi
 
-# extract_hex turns tshark follow,tcp,raw lines into one continuous hex string:
-# strips the 8-digit offset column and every non-hex byte separator.
+# extract_hex turns both tshark follow,tcp,raw output and raccoon's hexdump into
+# one continuous lowercase hex string. tshark raw lines contain only hex (with
+# an optional tab for server-to-client data); raccoon lines have an 8-digit
+# offset followed by hex bytes. Header lines are ignored.
 extract_hex() {
-	sed -E 's/^[0-9a-fA-F]{8}[[:space:]]*//' |
-		grep -Eo '[0-9a-f]{2}' |
-		tr -d '\n'
+	awk '
+		/^[0-9a-fA-F]{8}[[:space:]]{2,}[0-9a-fA-F[:space:]]+$/ {
+			sub(/^[0-9a-fA-F]{8}[[:space:]]+/, "")
+			gsub(/[^0-9a-fA-F]/, "")
+			printf "%s", tolower($0)
+			next
+		}
+		/^[[:space:]]*[0-9a-fA-F]+[[:space:]]*$/ {
+			gsub(/[^0-9a-fA-F]/, "")
+			printf "%s", tolower($0)
+		}
+	'
 }
 
 fails=0
