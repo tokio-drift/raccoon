@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/tokio-drift/raccoon/internal/casedir"
@@ -48,6 +49,18 @@ type Server struct {
 	mu   sync.Mutex
 	dbs  map[string]*store.DB
 	runs map[string]*RunState
+
+	// shutdownCh is closed when the server starts shutting down. Long-lived
+	// responses (the SSE stream) watch it so a graceful shutdown can finish
+	// instead of waiting for the client to disconnect.
+	shutdownCh   chan struct{}
+	shutdownOnce sync.Once
+
+	// analyses tracks the background analyses started by uploads so a
+	// shutdown can wait for them to finish and flush their case databases.
+	analyses sync.WaitGroup
+	// running counts the analyses that are still in flight.
+	running atomic.Int64
 }
 
 // RunState is the in-progress state of one case. Upload registers a RunState
@@ -317,9 +330,10 @@ func New(cfg Config) (*Server, error) {
 		cfg.Addr = "127.0.0.1:0"
 	}
 	s := &Server{
-		cfg:  cfg,
-		dbs:  make(map[string]*store.DB),
-		runs: make(map[string]*RunState),
+		cfg:        cfg,
+		dbs:        make(map[string]*store.DB),
+		runs:       make(map[string]*RunState),
+		shutdownCh: make(chan struct{}),
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/upload", s.handleUpload)
@@ -379,7 +393,12 @@ func (s *Server) Addr() net.Addr {
 }
 
 // Shutdown stops the HTTP server and closes every cached case database.
+// Long-lived responses are told to finish first, background analyses are given
+// a chance to complete, and closing a case database flushes its pending
+// writes, so no analysis data is lost.
 func (s *Server) Shutdown(ctx context.Context) error {
+	s.stopStreams()
+	s.waitAnalyses(ctx)
 	var err error
 	if s.srv != nil {
 		err = s.srv.Shutdown(ctx)
@@ -388,14 +407,38 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return err
 }
 
+// waitAnalyses blocks until every background analysis has finished or the
+// context expires.
+func (s *Server) waitAnalyses(ctx context.Context) {
+	done := make(chan struct{})
+	go func() {
+		s.analyses.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-ctx.Done():
+	}
+}
+
+// PendingAnalyses returns the number of background analyses still running.
+func (s *Server) PendingAnalyses() int { return int(s.running.Load()) }
+
 // Close is Shutdown without waiting for in-flight requests.
 func (s *Server) Close() error {
+	s.stopStreams()
 	var err error
 	if s.srv != nil {
 		err = s.srv.Close()
 	}
 	s.closeDBs()
 	return err
+}
+
+// stopStreams signals the long-lived responses to finish. It is safe to call
+// more than once.
+func (s *Server) stopStreams() {
+	s.shutdownOnce.Do(func() { close(s.shutdownCh) })
 }
 
 func (s *Server) closeDBs() {

@@ -108,11 +108,15 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 
 	run := NewRunState(c.ID, name, n, time.Now())
 	s.Track(run)
+	s.analyses.Add(1)
+	s.running.Add(1)
 	go s.runAnalysis(run, c)
 	writeJSON(w, http.StatusOK, uploadResponse{CaseID: c.ID})
 }
 
 func (s *Server) runAnalysis(run *RunState, c *casedir.Case) {
+	defer s.analyses.Done()
+	defer s.running.Add(-1)
 	defer func() {
 		if recover() != nil {
 			run.Finish("analysis failed: internal error")

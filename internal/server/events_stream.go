@@ -70,6 +70,10 @@ func (s *Server) handleEventsStream(w http.ResponseWriter, r *http.Request) {
 		select {
 		case <-r.Context().Done():
 			return
+		case <-s.shutdownCh:
+			// The server is shutting down: finish the stream so the
+			// shutdown is not blocked by a long-lived connection.
+			return
 		case <-ticker.C:
 			if _, err := io.WriteString(w, ": ping\n\n"); err != nil {
 				return

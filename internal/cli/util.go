@@ -61,14 +61,26 @@ func dashboardURL(s interface{ Addr() net.Addr }) string {
 	return "http://127.0.0.1:" + port + "/?t="
 }
 
+// dashboardFullURL returns the dashboard URL including the session token.
+func dashboardFullURL(s interface {
+	Addr() net.Addr
+	Token() string
+}) string {
+	base := dashboardURL(s)
+	if base == "" {
+		return ""
+	}
+	return base + s.Token()
+}
+
 func writeDashboard(w io.Writer, s interface {
 	Addr() net.Addr
 	Token() string
 }) {
-	url := dashboardURL(s)
+	url := dashboardFullURL(s)
 	if url == "" {
 		fmt.Fprintln(w, "Dashboard: unavailable")
 		return
 	}
-	fmt.Fprintf(w, "Dashboard: %s%s\n", url, s.Token())
+	fmt.Fprintf(w, "Dashboard: %s\n", url)
 }

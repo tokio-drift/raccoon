@@ -26,6 +26,10 @@ type serveOptions struct {
 	verbose   bool
 }
 
+// shutdownGrace is the time the server gets to finish open streams and
+// background analyses before it is closed.
+const shutdownGrace = 15 * time.Second
+
 func newServeCommand(stdout, stderr io.Writer) *cobra.Command {
 	opts := serveOptions{out: defaultBaseDir()}
 	cmd := &cobra.Command{
@@ -46,7 +50,7 @@ func newServeCommand(stdout, stderr io.Writer) *cobra.Command {
 			}
 			ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 			defer stop()
-			return serveCase(ctx, base, opts.port, stdout, stderr)
+			return serveCase(ctx, base, opts.port, opts.noBrowser, stdout, stderr)
 		},
 	}
 	f := cmd.Flags()
@@ -57,7 +61,7 @@ func newServeCommand(stdout, stderr io.Writer) *cobra.Command {
 	return cmd
 }
 
-func serveCase(ctx context.Context, base string, port int, stdout, stderr io.Writer) error {
+func serveCase(ctx context.Context, base string, port int, noBrowser bool, stdout, stderr io.Writer) error {
 	token, err := newToken()
 	if err != nil {
 		return internal(err)
@@ -88,12 +92,25 @@ func serveCase(ctx context.Context, base string, port int, stdout, stderr io.Wri
 		fmt.Fprintf(stdout, "Cases: %d\n", len(cases))
 	}
 	writeDashboard(stdout, s)
+
+	url := dashboardFullURL(s)
+	if !noBrowser && url != "" {
+		if err := openBrowserFn(url); err != nil {
+			fmt.Fprintf(stderr, "warning: could not open a browser: %v\n", err)
+			fmt.Fprintf(stderr, "open %s manually\n", url)
+		}
+	}
+
 	<-ctx.Done()
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
 	defer cancel()
 	if err := s.Shutdown(shutdownCtx); err != nil {
 		return internal(fmt.Errorf("shutdown: %w", err))
 	}
+	if pending := s.PendingAnalyses(); pending > 0 {
+		fmt.Fprintf(stderr, "warning: %d analysis(es) were still running; the case is kept on disk\n", pending)
+	}
+	fmt.Fprintf(stdout, "Stopped. Cases are kept in %s\n", base)
 	return nil
 }
