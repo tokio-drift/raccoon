@@ -136,6 +136,11 @@ func (d *dirSpool) spill() error {
 }
 
 func (d *dirSpool) finalize() error {
+	if d.memory {
+		if err := d.spill(); err != nil {
+			return err
+		}
+	}
 	if d.bw != nil {
 		return d.bw.Flush()
 	}

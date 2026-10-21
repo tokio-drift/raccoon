@@ -3,6 +3,8 @@ package reassembly
 import (
 	"bytes"
 	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/tokio-drift/raccoon/internal/decode"
@@ -88,6 +90,29 @@ func TestSpoolSpill(t *testing.T) {
 	}
 	if got := readAll(t, spool.ReaderAt(model.C2S), spool.Len(model.C2S)); !bytes.Equal(got, big) {
 		t.Fatal("spilled bytes mismatch")
+	}
+}
+
+func TestSpoolFinalizePersistsMemory(t *testing.T) {
+	dir := t.TempDir()
+	spool, err := NewSpool(dir, 4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer spool.Close()
+
+	if _, err := spool.Writer(model.C2S).Write([]byte("GET")); err != nil {
+		t.Fatal(err)
+	}
+	if err := spool.Finalize(); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(dir, streamFileName(4, model.C2S)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "GET" {
+		t.Fatalf("persisted bytes=%q", got)
 	}
 }
 
