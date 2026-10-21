@@ -328,7 +328,7 @@ On reconnect the server first replays current state.
 
 | event | data |
 |---|---|
-| `progress` | `{"stage":"carve","percent":73,"packets":1024,"bytes":524288,"streams":12,"files":2}` |
+| `progress` | `{"stage":"process","percent":80,"packets":1024,"bytes":524288,"streams":12,"files":2}` |
 | `ready` | `{"events":40,"files":5}` |
 | `verdict` | `{"fileId":1,"sha256":"e3b0...","status":"malicious"}` |
 | `done` | `{"caseId":"20260101-120000-abcdef"}` |

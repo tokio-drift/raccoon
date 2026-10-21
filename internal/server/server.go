@@ -67,6 +67,53 @@ type RunState struct {
 	progress int
 	finished int64 // unix ns, zero until Finish
 	errMsg   string
+
+	packets int64
+	bytes   int64
+	streams int64
+	files   int64
+
+	timelineReady bool
+	readyEvents   int64
+	readyFiles    int64
+	verdicts      []runVerdict
+	subs          map[chan sseEvent]struct{}
+}
+
+// runVerdict is the payload of an SSE verdict message.
+type runVerdict struct {
+	FileID int64  `json:"fileId"`
+	SHA256 string `json:"sha256"`
+	Status string `json:"status"`
+}
+
+// sseEvent is one marshalled Server-Sent Event.
+type sseEvent struct {
+	name string
+	data []byte
+}
+
+type progressEvent struct {
+	Stage   string `json:"stage"`
+	Percent int    `json:"percent"`
+	Packets int64  `json:"packets"`
+	Bytes   int64  `json:"bytes"`
+	Streams int64  `json:"streams"`
+	Files   int64  `json:"files"`
+}
+
+type readyEvent struct {
+	Events int64 `json:"events"`
+	Files  int64 `json:"files"`
+}
+
+type doneEvent struct {
+	CaseID string `json:"caseId"`
+}
+
+type errorEvent struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
 }
 
 // NewRunState returns the initial (queued) state for one analysis run.
@@ -77,20 +124,76 @@ func NewRunState(id, fileName string, size int64, started time.Time) *RunState {
 		Size:     size,
 		Started:  started.UTC().UnixNano(),
 		status:   "queued",
+		subs:     make(map[chan sseEvent]struct{}),
 	}
 }
 
 // SetProgress records the current pipeline stage and progress percentage and
-// marks the run as running.
+// marks the run as running. Counters keep their previous values.
 func (r *RunState) SetProgress(stage string, progress int) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.setProgressLocked(stage, progress)
+	r.publishProgressLocked()
+}
+
+// SetProgressFull records stage, percentage and all progress counters.
+func (r *RunState) SetProgressFull(stage string, progress int, packets, bytes, streams, files int64) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.packets = packets
+	r.bytes = bytes
+	r.streams = streams
+	r.files = files
+	r.setProgressLocked(stage, progress)
+	r.publishProgressLocked()
+}
+
+func (r *RunState) setProgressLocked(stage string, progress int) {
+	if progress < 0 {
+		progress = 0
+	}
+	if progress > 100 {
+		progress = 100
+	}
 	r.status = "running"
 	r.stage = stage
 	r.progress = progress
 }
 
-// Finish marks the run ready (errMsg empty) or failed.
+func (r *RunState) publishProgressLocked() {
+	r.publishLocked("progress", progressEvent{
+		Stage:   r.stage,
+		Percent: r.progress,
+		Packets: r.packets,
+		Bytes:   r.bytes,
+		Streams: r.streams,
+		Files:   r.files,
+	})
+}
+
+// SetTimelineReady records that the timeline is available and publishes the
+// ready event.
+func (r *RunState) SetTimelineReady(events, files int64) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.timelineReady = true
+	r.readyEvents = events
+	r.readyFiles = files
+	r.publishLocked("ready", readyEvent{Events: events, Files: files})
+}
+
+// PublishVerdict records and broadcasts a live verdict update.
+func (r *RunState) PublishVerdict(fileID int64, sha256, status string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	v := runVerdict{FileID: fileID, SHA256: sha256, Status: status}
+	r.verdicts = append(r.verdicts, v)
+	r.publishLocked("verdict", v)
+}
+
+// Finish marks the run ready (errMsg empty) or failed and publishes the
+// terminal SSE event.
 func (r *RunState) Finish(errMsg string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -99,10 +202,78 @@ func (r *RunState) Finish(errMsg string) {
 		r.status = "ready"
 		r.stage = "done"
 		r.progress = 100
+		r.publishLocked("done", doneEvent{CaseID: r.CaseID})
 	} else {
 		r.status = "failed"
 		r.errMsg = errMsg
+		r.publishLocked("error", errorEvent{Code: codeInternal, Message: errMsg})
 	}
+}
+
+// publishLocked queues ev for every subscriber without blocking. Callers hold
+// r.mu.
+func (r *RunState) publishLocked(name string, data any) {
+	b, err := json.Marshal(data)
+	if err != nil {
+		return
+	}
+	ev := sseEvent{name: name, data: b}
+	for ch := range r.subs {
+		select {
+		case ch <- ev:
+		default:
+		}
+	}
+}
+
+// subscribe registers an SSE subscriber and returns the current state to
+// replay before live events. Callers must call unsubscribe when done.
+func (r *RunState) subscribe() (chan sseEvent, []sseEvent) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.subs == nil {
+		r.subs = make(map[chan sseEvent]struct{})
+	}
+	ch := make(chan sseEvent, 64)
+	r.subs[ch] = struct{}{}
+	return ch, r.replayLocked()
+}
+
+func (r *RunState) unsubscribe(ch chan sseEvent) {
+	r.mu.Lock()
+	delete(r.subs, ch)
+	r.mu.Unlock()
+}
+
+// replayLocked builds the current-state replay. Callers hold r.mu.
+func (r *RunState) replayLocked() []sseEvent {
+	out := make([]sseEvent, 0, len(r.verdicts)+3)
+	out = append(out, mustSSEEvent("progress", progressEvent{
+		Stage:   r.stage,
+		Percent: r.progress,
+		Packets: r.packets,
+		Bytes:   r.bytes,
+		Streams: r.streams,
+		Files:   r.files,
+	}))
+	for _, v := range r.verdicts {
+		out = append(out, mustSSEEvent("verdict", v))
+	}
+	if r.timelineReady {
+		out = append(out, mustSSEEvent("ready", readyEvent{Events: r.readyEvents, Files: r.readyFiles}))
+	}
+	switch r.status {
+	case "ready":
+		out = append(out, mustSSEEvent("done", doneEvent{CaseID: r.CaseID}))
+	case "failed":
+		out = append(out, mustSSEEvent("error", errorEvent{Code: codeInternal, Message: r.errMsg}))
+	}
+	return out
+}
+
+func mustSSEEvent(name string, data any) sseEvent {
+	b, _ := json.Marshal(data)
+	return sseEvent{name: name, data: b}
 }
 
 // runSnapshot is a consistent copy of a RunState for serialization.
@@ -151,10 +322,14 @@ func New(cfg Config) (*Server, error) {
 		runs: make(map[string]*RunState),
 	}
 	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/upload", s.handleUpload)
 	mux.HandleFunc("GET /api/case/{id}", s.handleCase)
 	mux.HandleFunc("GET /api/case/{id}/events", s.handleEvents)
+	mux.HandleFunc("GET /api/case/{id}/events/stream", s.handleEventsStream)
 	mux.HandleFunc("GET /api/case/{id}/files", s.handleFiles)
+	mux.HandleFunc("GET /api/case/{id}/files/{fid}/download", s.handleFileDownload)
 	mux.HandleFunc("GET /api/case/{id}/streams", s.handleStreams)
+	mux.HandleFunc("GET /api/case/{id}/streams/{sid}/bytes", s.handleStreamBytes)
 	mux.HandleFunc("/api/", s.handleAPINotFound)
 	mux.HandleFunc("/", s.serveStatic)
 	s.handler = s.wrap(mux)
@@ -350,6 +525,14 @@ func (s *Server) runFor(id string) (runSnapshot, bool) {
 	return r.snapshot(), true
 }
 
+// runStateFor returns the tracked RunState itself for streaming subscribers.
+func (s *Server) runStateFor(id string) (*RunState, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	r, ok := s.runs[id]
+	return r, ok
+}
+
 // errUnknownCase marks every condition that must answer 404.
 var errUnknownCase = errors.New("server: unknown case")
 
@@ -368,11 +551,14 @@ type errorEnvelope struct {
 
 // Error codes from docs/api.md.
 const (
-	codeInvalidQuery = "invalid_query"
-	codeUnauthorized = "unauthorized"
-	codeForbidden    = "forbidden"
-	codeNotFound     = "not_found"
-	codeInternal     = "internal"
+	codeInvalidQuery    = "invalid_query"
+	codeInvalidCapture  = "invalid_capture"
+	codePayloadTooLarge = "payload_too_large"
+	codeUnauthorized    = "unauthorized"
+	codeForbidden       = "forbidden"
+	codeNotFound        = "not_found"
+	codeNotReady        = "not_ready"
+	codeInternal        = "internal"
 )
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

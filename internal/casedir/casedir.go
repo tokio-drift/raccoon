@@ -29,6 +29,7 @@ var (
 const (
 	CaseJSON   = "case.json"
 	DBFile     = "raccoon.db"
+	InputPCAP  = "input.pcap"
 	PktIndex   = "pktindex.bin"
 	StreamsDir = "streams"
 	CarvedDir  = "carved"
@@ -183,6 +184,9 @@ func (c *Case) Path(elem ...string) string {
 
 // DB returns the SQLite database path.
 func (c *Case) DB() string { return c.Path(DBFile) }
+
+// InputPCAPPath returns the path of the uploaded capture.
+func (c *Case) InputPCAPPath() string { return c.Path(InputPCAP) }
 
 // PktIndex returns the packet index path.
 func (c *Case) PktIndex() string { return c.Path(PktIndex) }

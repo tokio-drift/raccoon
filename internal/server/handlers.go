@@ -58,16 +58,21 @@ type caseResponse struct {
 
 func (s *Server) handleCase(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if run, ok := s.runFor(id); ok {
+	run, tracked := s.runFor(id)
+	if tracked && run.status != "ready" {
 		writeJSON(w, http.StatusOK, caseFromRun(run))
 		return
 	}
 	c, db, err := s.openCase(id)
-	if errors.Is(err, errUnknownCase) {
-		writeErr(w, http.StatusNotFound, codeNotFound, "unknown case")
-		return
-	}
 	if err != nil {
+		if tracked {
+			writeJSON(w, http.StatusOK, caseFromRun(run))
+			return
+		}
+		if errors.Is(err, errUnknownCase) {
+			writeErr(w, http.StatusNotFound, codeNotFound, "unknown case")
+			return
+		}
 		writeErr(w, http.StatusInternalServerError, codeInternal, "cannot open case database")
 		return
 	}

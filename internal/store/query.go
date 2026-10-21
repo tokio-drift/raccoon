@@ -286,6 +286,28 @@ func (db *DB) Streams(f StreamFilter) ([]model.Stream, string, error) {
 	return trimPage(items, limit, func(s model.Stream) string { return encodeIDCursor(s.ID) })
 }
 
+// FileByID returns one carved file. It returns ErrNotFound when the id is
+// unknown.
+func (db *DB) FileByID(id int64) (*model.CarvedFile, error) {
+	row := db.conn.QueryRow("SELECT "+fileColumns+" FROM files WHERE id = ?", id)
+	var (
+		f        model.CarvedFile
+		streamID sql.NullInt64
+		dir      int64
+	)
+	if err := row.Scan(&f.ID, &streamID, &dir, &f.StartOff, &f.EndOff,
+		&f.Format, &f.Ext, &f.Status, &f.Confidence, &f.Size,
+		&f.MD5, &f.SHA256, &f.DisplayName, &f.Path, &f.MagicHex); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("%w: file %d", ErrNotFound, id)
+		}
+		return nil, fmt.Errorf("store: query file %d: %w", id, err)
+	}
+	f.StreamID = streamID.Int64
+	f.Dir = model.Direction(dir)
+	return &f, nil
+}
+
 // StreamByID returns one stream. It returns ErrNotFound when the id is unknown.
 func (db *DB) StreamByID(id int64) (*model.Stream, error) {
 	row := db.conn.QueryRow("SELECT "+streamColumns+" FROM streams WHERE id = ?", id)

@@ -547,9 +547,14 @@ readLoop:
 	streamsCount := progress.streams.Load()
 	filesCount := progress.files.Load()
 
-	// Write metadata to store.
+	// Write metadata to store. Prefer the original capture name recorded in
+	// case.json (uploads are stored as input.pcap but keep the client name).
+	pcapName := filepath.Base(opts.PCAPPath)
+	if opts.Case != nil && opts.Case.Meta.PCAP != "" {
+		pcapName = filepath.Base(opts.Case.Meta.PCAP)
+	}
 	metaPairs := [][2]string{
-		{"pcap_name", filepath.Base(opts.PCAPPath)},
+		{"pcap_name", pcapName},
 		{"pcap_size", strconv.FormatInt(pcapSize, 10)},
 		{"pcap_sha256", sRes.sha256},
 		{"packets", strconv.FormatInt(packetsCount, 10)},

@@ -138,8 +138,9 @@ func seedCase(t *testing.T, dataDir string) {
 }
 
 type fixture struct {
-	srv  *Server
-	base string
+	srv     *Server
+	base    string
+	dataDir string
 }
 
 func startFixture(t *testing.T, dist fs.FS) *fixture {
@@ -154,7 +155,7 @@ func startFixture(t *testing.T, dist fs.FS) *fixture {
 		t.Fatalf("Start: %v", err)
 	}
 	t.Cleanup(func() { srv.Close() })
-	return &fixture{srv: srv, base: "http://" + srv.Addr().String()}
+	return &fixture{srv: srv, base: "http://" + srv.Addr().String(), dataDir: dataDir}
 }
 
 // get performs a request with the valid token and Host by default.
