@@ -1,0 +1,200 @@
+/* App shell (UI_Design.md §4.1): fixed header, case strip, banner slot,
+   incident strip, content region and status bar. The page itself never scrolls;
+   panes scroll individually. */
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--bg-page);
+}
+
+/* --------------------------------------------------------------- header row */
+.app-header {
+  position: relative;
+  z-index: var(--z-header);
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  height: var(--header-height);
+  padding: 0 var(--page-gutter);
+  background: var(--bg-surface);
+  border-bottom: var(--border-hairline) solid var(--border-subtle);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--accent);
+  text-decoration: none;
+  flex: 0 0 168px;
+}
+
+.wordmark {
+  font: var(--text-wordmark);
+  letter-spacing: var(--tracking-wordmark);
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.app-header__case {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.app-header__case-name {
+  min-width: 0;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--text-body-strong);
+}
+
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  flex: 0 0 auto;
+}
+
+/* ---------------------------------------------------------- progress hairline */
+.progress-hairline {
+  position: relative;
+  z-index: var(--z-header);
+  height: var(--progress-hairline-height);
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.progress-hairline__fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width var(--motion-progress);
+}
+
+.progress-hairline--stale .progress-hairline__fill {
+  background: repeating-linear-gradient(
+    45deg,
+    var(--border-strong) 0 6px,
+    transparent 6px 12px
+  );
+}
+
+/* ----------------------------------------------------------------- case strip */
+.case-strip {
+  position: relative;
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  height: var(--case-strip-height);
+  padding: 0 var(--page-gutter);
+  background: var(--bg-surface);
+  border-bottom: var(--border-hairline) solid var(--border-subtle);
+}
+
+.case-strip__stats {
+  color: var(--text-muted);
+  font: var(--text-caption);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------------------------------------------------------------- banner slot */
+.banner-slot {
+  display: flex;
+  flex-direction: column;
+}
+
+.incident-strip-slot {
+  display: flex;
+}
+
+/* ----------------------------------------------------------------- content */
+.content-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.content-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: auto;
+}
+
+/* --------------------------------------------------------------- status bar */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  height: var(--status-bar-height);
+  padding: 0 var(--page-gutter);
+  background: var(--bg-sunken);
+  border-top: var(--border-hairline) solid var(--border-subtle);
+  color: var(--text-muted);
+  font: var(--text-caption);
+}
+
+.status-bar__group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.status-bar__button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.status-bar__button:hover {
+  color: var(--text-secondary);
+}
+
+/* ----------------------------------------------------------- full page state */
+.full-page {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-16);
+  padding: var(--space-64) var(--page-gutter);
+  text-align: center;
+  background: var(--bg-page);
+  overflow: auto;
+}
+
+.full-page__title {
+  font: var(--text-display);
+  letter-spacing: -0.01em;
+}
+
+.full-page__body {
+  max-width: 560px;
+  color: var(--text-secondary);
+}
+
+/* --------------------------------------------------------------- responsive */
+@media (min-width: 1440px) {
+  :root {
+    --page-gutter: var(--space-24);
+  }
+}

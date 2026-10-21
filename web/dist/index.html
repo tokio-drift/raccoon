@@ -1,11 +1,37 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="referrer" content="no-referrer" />
     <title>RACCOON</title>
+    <script>
+      // Apply the stored theme before the first paint so the page never flashes
+      // the wrong theme. The manual choice wins; "system" follows the OS.
+      ;(function () {
+        var theme = 'light'
+        try {
+          var stored = window.localStorage.getItem('raccoon.theme')
+          if (stored === 'light' || stored === 'dark') {
+            theme = stored
+          } else if (
+            stored !== 'system' &&
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches
+          ) {
+            theme = 'dark'
+          }
+        } catch (err) {
+          theme = 'light'
+        }
+        document.documentElement.setAttribute('data-theme', theme)
+      })()
+    </script>
+    <script type="module" crossorigin src="./assets/index.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index.css">
   </head>
   <body>
-    <div id="root">RACCOON UI placeholder (run `make ui` to build the real interface).</div>
+    <div id="root"></div>
   </body>
 </html>

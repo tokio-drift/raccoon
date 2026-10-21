@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="referrer" content="no-referrer" />
+    <title>RACCOON</title>
+    <script>
+      // Apply the stored theme before the first paint so the page never flashes
+      // the wrong theme. The manual choice wins; "system" follows the OS.
+      ;(function () {
+        var theme = 'light'
+        try {
+          var stored = window.localStorage.getItem('raccoon.theme')
+          if (stored === 'light' || stored === 'dark') {
+            theme = stored
+          } else if (
+            stored !== 'system' &&
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches
+          ) {
+            theme = 'dark'
+          }
+        } catch (err) {
+          theme = 'light'
+        }
+        document.documentElement.setAttribute('data-theme', theme)
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

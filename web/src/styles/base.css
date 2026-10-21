@@ -1,0 +1,177 @@
+/* Base layer: reset, document defaults, focus, textures and shared utilities. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font: var(--text-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+ul,
+ol {
+  margin: 0;
+  padding: 0;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+h1 {
+  font: var(--text-h1);
+}
+
+h2 {
+  font: var(--text-h2);
+}
+
+h3 {
+  font: var(--text-h3);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--evidence);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Focus: 2 px ring, 2 px offset, with a surface-coloured inner gap so the ring
+   stays visible on every background (§10.11). */
+:focus-visible {
+  outline: var(--border-focus) solid var(--focus-ring);
+  outline-offset: var(--focus-offset);
+  box-shadow: 0 0 0 1px var(--bg-surface);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--space-8);
+  top: -3rem;
+  z-index: var(--z-dialog);
+  padding: var(--space-8) var(--space-16);
+  background: var(--bg-surface);
+  border: var(--border-hairline) solid var(--border-strong);
+  border-radius: var(--radius-control);
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: top var(--motion-panel);
+}
+
+.skip-link:focus {
+  top: var(--space-8);
+}
+
+.mono {
+  font: var(--text-mono);
+}
+
+.mono-small {
+  font: var(--text-mono-small);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  font: var(--text-label);
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.caption {
+  font: var(--text-caption);
+  letter-spacing: var(--tracking-caption);
+  color: var(--text-muted);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* Untrusted text is rendered as inert text; this class isolates bidirectional
+   characters so they cannot reorder the surrounding UI (§13.1). */
+.inert-text {
+  unicode-bidi: isolate;
+  direction: auto;
+  overflow-wrap: anywhere;
+}
+
+/* Textures (§10.9): CSS only, no images. */
+.texture-ringed-tail {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--border-strong) 0 6px,
+    transparent 6px 12px
+  );
+}
+
+.texture-hatch {
+  background-image: repeating-linear-gradient(
+    45deg,
+    var(--border-strong) 0 1px,
+    transparent 1px 6px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
