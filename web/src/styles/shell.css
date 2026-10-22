@@ -101,11 +101,24 @@
 }
 
 .case-strip__stats {
+  display: flex;
   color: var(--text-muted);
   font: var(--text-caption);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.case-strip__stat:not(:last-child)::after {
+  content: " · ";
+}
+
+/* The events and files counts drop on a narrow screen (§14.2). */
+@media (max-width: 1023px) {
+  .case-strip__stat--events,
+  .case-strip__stat--files {
+    display: none;
+  }
 }
 
 /* ---------------------------------------------------------------- banner slot */
@@ -124,6 +137,32 @@
   min-height: 0;
   display: flex;
   overflow: hidden;
+}
+
+/* The content is capped and centred on a wide screen (§14.1). */
+@media (min-width: 1920px) {
+  .content-area > *,
+  .case-strip,
+  .app-header {
+    max-width: 1680px;
+    margin-inline: auto;
+    width: 100%;
+  }
+}
+
+/* The privacy line shortens on a narrow screen (§14.2). */
+.status-bar__privacy-short {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .status-bar__privacy-long {
+    display: none;
+  }
+
+  .status-bar__privacy-short {
+    display: inline;
+  }
 }
 
 .content-scroll {

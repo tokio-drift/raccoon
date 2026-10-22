@@ -80,8 +80,11 @@ export function FilesDetailPane({
 
   return (
     <aside className="files-detail" aria-label="File details">
-      <header className="files-detail__header">
-        <h2 className="files-detail__title">{shownName || unnamedFileLabel(file)}</h2>
+      {/* A div, not a header: the page keeps a single banner landmark. */}
+      <div className="files-detail__header">
+        <h2 className="files-detail__title" dir="auto">
+          {shownName || unnamedFileLabel(file)}
+        </h2>
         <div className="files-detail__header-tags">
           {pathLike ? (
             <span
@@ -137,7 +140,7 @@ export function FilesDetailPane({
             <Icon name="close" size={18} />
           </button>
         </div>
-      </header>
+      </div>
 
       <p className="files-detail__safety">
         RACCOON never opens or previews extracted files. This page shows information about the file, not

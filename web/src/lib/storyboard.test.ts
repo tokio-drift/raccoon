@@ -208,9 +208,21 @@ describe('the rows of the feed', () => {
     expect(group?.kind === 'group' ? group.total : 0).toBe(1)
   })
 
-  it('puts an event without a time under its own row', () => {
+  it('puts an event without a time under a "Not dated" separator', () => {
     const rows = buildRows([event({ id: 1, ts: '' })])
-    expect(rows[0]?.kind).toBe('not-dated')
+    expect(rows[0]?.kind).toBe('not-dated-separator')
+    expect(rows[1]?.kind).toBe('not-dated')
+  })
+
+  it('sorts the events without a time last, by packet number (§5.12)', () => {
+    const dated = event({ id: 1, ts: '2026-01-01T12:00:01.000000000Z', packetNo: 9 })
+    const undated = event({ id: 2, ts: '', packetNo: 3 })
+    const rows = buildRows([undated, dated])
+    const first = rows[0]
+    expect(first?.kind === 'event' ? first.event.id : 0).toBe(1)
+    expect(rows[1]?.kind).toBe('not-dated-separator')
+    const last = rows[2]
+    expect(last?.kind === 'not-dated' ? last.event.id : 0).toBe(2)
   })
 
   it('shows a date separator when the capture crosses midnight', () => {

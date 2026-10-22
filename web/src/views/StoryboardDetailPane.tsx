@@ -59,7 +59,9 @@ export function StoryboardDetailPane({
     )
   }
 
-  const typeLabel = event.type.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
+  const typeLabel = isUnknownEventType(event.type)
+    ? unknownTypeLabel(event.type)
+    : typeLabelFor(event.type)
   const isUnknownType = !KNOWN_DETAIL_TYPES.has(event.type)
   // A long title is cut to four lines; the reader can ask for all of it.
   const longTitle = (event.title ?? '').length > 120
@@ -75,9 +77,13 @@ export function StoryboardDetailPane({
 
   return (
     <aside className="storyboard-detail" aria-label="Event details" tabIndex={-1} ref={paneRef}>
-      <header className="storyboard-detail__header">
+      {/* A div, not a header: the page keeps a single banner landmark. */}
+      <div className="storyboard-detail__header">
         <div className="storyboard-detail__header-row">
           <SeverityBadge severity={eventSeverity(event)} />
+          {!event.severity ? (
+            <span className="storyboard-detail__muted">Info (not specified)</span>
+          ) : null}
           <span className="tag tag--plain">{typeLabel}</span>
           {event.proto ? <span className="tag tag--plain">{event.proto.toUpperCase()}</span> : null}
           {technique ? (
@@ -96,7 +102,13 @@ export function StoryboardDetailPane({
             </button>
           ) : null}
         </div>
-        <h2 className="storyboard-detail__title">{event.title || 'Untitled event'}</h2>
+        <h2
+          className={
+            event.title ? 'storyboard-detail__title' : 'storyboard-detail__title storyboard-detail__title--muted'
+          }
+        >
+          {event.title || typeLabel}
+        </h2>
         {longTitle ? (
           <button
             type="button"
@@ -106,16 +118,30 @@ export function StoryboardDetailPane({
             {fullTitleOpen ? 'Show less' : 'Show full title'}
           </button>
         ) : null}
-        <p
-          className="storyboard-detail__time"
-          title={formatClock(parseTimestamp(event.ts), { micro: true })}
-        >
-          {`${formatElapsed(parseTimestamp(event.ts) - captureStart)} · ${formatClock(parseTimestamp(event.ts))}`}
-        </p>
+        {event.ts ? (
+          <p
+            className="storyboard-detail__time"
+            title={formatClock(parseTimestamp(event.ts), { micro: true })}
+          >
+            {`${formatElapsed(parseTimestamp(event.ts) - captureStart)} · ${formatClock(parseTimestamp(event.ts))}`}
+          </p>
+        ) : (
+          <p className="storyboard-detail__time storyboard-detail__time--muted">Time unknown</p>
+        )}
         {event.src || event.dst ? (
           <p className="storyboard-detail__endpoints" aria-label={endpointsLabel(event.src ?? '', event.dst ?? '')}>
             {(event.src ?? '') + ' → ' + (event.dst ?? '')}
           </p>
+        ) : null}
+        {event.src || event.dst ? (
+          <div className="storyboard-detail__endpoint-copies">
+            {event.src ? (
+              <CopyButton value={event.src} label={`Copy ${event.src}`} showLabel />
+            ) : null}
+            {event.dst ? (
+              <CopyButton value={event.dst} label={`Copy ${event.dst}`} showLabel />
+            ) : null}
+          </div>
         ) : null}
         <div className="storyboard-detail__tags">
           {tags.map((tag) => (
@@ -131,7 +157,7 @@ export function StoryboardDetailPane({
             </span>
           ))}
         </div>
-      </header>
+      </div>
 
       <div className="storyboard-detail__body">
         {event.explain ? (
@@ -292,8 +318,17 @@ export function StoryboardDetailPane({
           </DetailSection>
         ) : null}
 
-        {detailView.other.length > 0 ? (
-          <DetailSection title="Other details" defaultCollapsed={detailView.other.length > 8} sectionKey={`other-${event.id}`}>
+        {detailView.other.length > 0 || isUnknownType ? (
+          <DetailSection
+            title="Other details"
+            defaultCollapsed={detailView.other.length + (isUnknownType ? 1 : 0) > 8}
+            sectionKey={`other-${event.id}`}
+          >
+            {isUnknownType ? (
+              <p className="storyboard-detail__muted">
+                The type &quot;{event.type}&quot; is not known to this build.
+              </p>
+            ) : null}
             <table className="storyboard-detail__table">
               <tbody>
                 {detailView.other.map((entry) => (
@@ -308,22 +343,12 @@ export function StoryboardDetailPane({
                     </td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
-          </DetailSection>
-        ) : null}
-
-        {isUnknownType && detailView.other.length === 0 ? (
-          <DetailSection title="Other details">
-            <p className="storyboard-detail__muted">
-              The type &quot;{event.type}&quot; is not known to this build.
-            </p>
-            <table className="storyboard-detail__table">
-              <tbody>
-                <tr>
-                  <th scope="row">type</th>
-                  <td>{event.type}</td>
-                </tr>
+                {isUnknownType ? (
+                  <tr>
+                    <th scope="row">type</th>
+                    <td>{event.type}</td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </DetailSection>
@@ -507,6 +532,9 @@ import {
   endpointsLabel,
   packetRangeLabel,
   uncertaintyTags,
+  isUnknownEventType,
   typeLabel as eventTypeLabel,
+  typeLabel as typeLabelFor,
+  unknownTypeLabel,
 } from '../lib/events'
 import { formatBytes, formatClock, formatElapsed, parseTimestamp } from '../lib/format'

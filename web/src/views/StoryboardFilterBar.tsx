@@ -48,6 +48,8 @@ export interface StoryboardFilterBarProps {
   /** The phases present in the case; the control is hidden without them. */
   phases: string[]
   onClearAll: () => void
+  /** The view is reset: the filters, the search and the selection (§3.6). */
+  onResetView: () => void
   onPreviousCritical: () => void
   onNextCritical: () => void
   /** True when a critical event exists to jump to. */
@@ -69,6 +71,7 @@ export function StoryboardFilterBar({
   protos,
   phases,
   onClearAll,
+  onResetView,
   onPreviousCritical,
   onNextCritical,
   canJumpCritical,
@@ -257,6 +260,10 @@ export function StoryboardFilterBar({
             Clear all
           </button>
         ) : null}
+
+        <button type="button" className="button button--tertiary" onClick={onResetView}>
+          Reset view
+        </button>
       </div>
 
       {active ? (

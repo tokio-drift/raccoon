@@ -115,8 +115,10 @@
   border-color: var(--info);
 }
 
+/* The warning chip is outlined and tinted: the text uses the colour of §10.1
+   for the text on the warning tint, so the contrast stays above 4.5:1. */
 .badge--warning {
-  color: var(--warning);
+  color: var(--text-on-warning-tint);
   border-color: var(--warning);
   background: var(--warning-tint);
 }
@@ -905,6 +907,7 @@
 
 /* --------------------------------------------------------------- dropzone */
 .dropzone {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -918,6 +921,21 @@
   border-radius: var(--radius-dialog);
   background: var(--bg-surface);
   text-align: center;
+}
+
+/* The ringed-tail stripe of the dropzone (UI_Design.md §10.9). */
+.dropzone::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--border-strong) 0 6px,
+    transparent 6px 12px
+  );
 }
 
 .dropzone--over {
@@ -1046,7 +1064,7 @@
 .tag--warning {
   border-style: solid;
   border-color: var(--warning);
-  color: var(--warning);
+  color: var(--text-on-warning-tint);
   background: var(--warning-tint);
 }
 
@@ -1533,6 +1551,19 @@ button.detail-section__heading {
   font-variant-numeric: tabular-nums;
 }
 
+/* The time of an event without a time (§5.12). */
+.event-card__unknown-time {
+  color: var(--text-muted);
+  font: var(--text-caption);
+}
+
+/* The mark of an event type this build does not know (§5.12). */
+.event-card__unknown-type {
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+}
+
 .event-card__type {
   color: var(--text-secondary);
   font: var(--text-label);
@@ -1550,6 +1581,12 @@ button.detail-section__heading {
 
 .event-card--critical .event-card__title {
   font-weight: 700;
+}
+
+/* The title of an event that has none: the type words, muted (§5.12). */
+.event-card__title--muted {
+  color: var(--text-muted);
+  font-weight: 400;
 }
 
 .event-card__foot {
@@ -1698,6 +1735,12 @@ button.detail-section__heading {
   background: var(--accent-tint);
 }
 
+.table__spacer td {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
 .table__row--updated {
   animation: badge-pulse var(--motion-pulse) ease-out 1;
 }
@@ -1705,6 +1748,45 @@ button.detail-section__heading {
 @media (min-width: 1280px) {
   .table__cell--optional {
     display: table-cell;
+  }
+}
+
+/* ------------------------------------------------------------- pane resizer */
+/* The handle between two panes (UI_Design.md §14.2). */
+
+.pane-resizer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 8px;
+  min-width: 8px;
+  cursor: col-resize;
+  background: var(--border-subtle);
+  touch-action: none;
+}
+
+.pane-resizer__grip {
+  width: 2px;
+  height: 32px;
+  border-radius: 1px;
+  background: var(--border-strong);
+  opacity: 0;
+  transition: opacity var(--motion-fade) linear;
+}
+
+.pane-resizer:hover .pane-resizer__grip,
+.pane-resizer:focus-visible .pane-resizer__grip {
+  opacity: 1;
+}
+
+.pane-resizer:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pane-resizer__grip {
+    transition: none;
   }
 }
 

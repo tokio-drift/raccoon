@@ -36,3 +36,6 @@ go.work.sum
 node_modules/
 .raccoon/
 testdata/big/
+
+# TypeScript incremental build state
+web/tsconfig.tsbuildinfo

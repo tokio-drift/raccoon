@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type JSX, type RefOb
 
 import type { CaseEvent } from '../api/types'
 import { Button } from '../components/primitives/Button'
+import { PaneResizer } from '../components/primitives/PaneResizer'
 import { EmptyState, ErrorState } from '../components/primitives/States'
 import { Skeleton } from '../components/primitives/Skeleton'
 import { TimeStrip } from '../components/content/TimeStrip'
@@ -15,6 +16,7 @@ import { filtersActive, filtersFromParams, filtersToParams, type StoryboardFilte
 import { formatCount, parseTimestamp } from '../lib/format'
 import { usePreferences } from '../lib/preferences'
 import { useRoute, type URLParams } from '../lib/router'
+import { useResizablePane } from '../hooks/useResizablePane'
 import { useStoryboard } from '../hooks/useStoryboard'
 import type { RaccoonApi } from '../api/api'
 
@@ -23,6 +25,15 @@ import type { RaccoonApi } from '../api/api'
  * event feed, the case brief, the filters, the time strip, the detail pane and
  * all of its states.
  */
+
+/** The smallest width of the event list, in pixels (§14.2). */
+const LIST_MIN_WIDTH = 420
+
+/** The largest width of the event list, in pixels (§14.2). */
+const LIST_MAX_WIDTH = 640
+
+/** The smallest width of the detail pane, in pixels (§14.2). */
+const DETAIL_MIN_WIDTH = 440
 
 export interface StoryboardViewProps {
   caseId: string
@@ -35,6 +46,8 @@ export interface StoryboardViewProps {
   headingRef?: RefObject<HTMLHeadingElement>
   /** The analysis is still running; the list shows partial results (§5.18). */
   partial?: boolean
+  /** The analysis stopped early; the results are partial (§8.5). */
+  partialResults?: boolean
 }
 
 export function StoryboardView({
@@ -46,6 +59,7 @@ export function StoryboardView({
   onOpenStreams,
   headingRef,
   partial = false,
+  partialResults = false,
 }: StoryboardViewProps): JSX.Element {
   const [preferences] = usePreferences()
   const { navigate } = useRoute()
@@ -57,6 +71,13 @@ export function StoryboardView({
 
   const initialFilters = useMemo(() => filtersFromParams(params), [params])
   const [filters, setFilters] = useState<StoryboardFilters>(initialFilters)
+  // The list pane can be resized; the width is remembered (§14.2).
+  const listPane = useResizablePane('storyboard-list', {
+    min: LIST_MIN_WIDTH,
+    max: LIST_MAX_WIDTH,
+    fallback: 500,
+  })
+  const listWidth = listPane.width
 
   // The deep link of the event: `?event={id}` (§3.2). It is read on every
   // change, so a link that arrives while the view is open still selects.
@@ -349,6 +370,13 @@ export function StoryboardView({
 
   const clearAll = useCallback(() => setFilters({ ...filters, severities: [], types: [], protos: [], phases: [], query: '', from: null, to: null, findingsOnly: false }), [filters])
 
+  // "Reset view" puts the view back to its start: no filter, no search and no
+  // selection (UI_Design.md §3.6).
+  const resetView = useCallback(() => {
+    clearAll()
+    storyboard.select(null)
+  }, [clearAll, storyboard])
+
 
   if (storyboard.loading) {
     return (
@@ -376,6 +404,7 @@ export function StoryboardView({
             protos={storyboard.protos}
             phases={storyboard.phases}
             onClearAll={clearAll}
+            onResetView={resetView}
             onPreviousCritical={previousCritical}
             onNextCritical={nextCritical}
             canJumpCritical={criticalIds.length > 0}
@@ -480,6 +509,7 @@ export function StoryboardView({
             protos={storyboard.protos}
             phases={storyboard.phases}
             onClearAll={clearAll}
+            onResetView={resetView}
             onPreviousCritical={previousCritical}
             onNextCritical={nextCritical}
             canJumpCritical={criticalIds.length > 0}
@@ -516,6 +546,12 @@ export function StoryboardView({
       <h1 className="visually-hidden" ref={headingRef} tabIndex={-1}>
         Storyboard
       </h1>
+      {partialResults ? (
+        <p className="storyboard__partial">
+          <span className="tag tag--warning">Partial</span>
+          The analysis stopped early. Some events are missing.
+        </p>
+      ) : null}
       {partial ? (
         <p className="storyboard__partial" role="status">
           Showing partial results. Analysis is still running; events may be added.{' '}
@@ -545,6 +581,7 @@ export function StoryboardView({
           protos={storyboard.protos}
           phases={storyboard.phases}
           onClearAll={clearAll}
+            onResetView={resetView}
           onPreviousCritical={previousCritical}
           onNextCritical={nextCritical}
           canJumpCritical={criticalIds.length > 0}
@@ -582,7 +619,10 @@ export function StoryboardView({
         />
       </div>
 
-      <div className="storyboard__body">
+      <div
+        className="storyboard__body"
+        style={{ gridTemplateColumns: `${listWidth}px 8px minmax(${DETAIL_MIN_WIDTH}px, 1fr)` }}
+      >
         <div className="storyboard__list-pane" role="region" aria-label="Event list">
           <StoryboardJumpBar
             events={events}
@@ -609,7 +649,13 @@ export function StoryboardView({
             onOpenFile={onOpenFile}
           />
         </div>
-        <div className="storyboard__divider" />
+        <PaneResizer
+          value={listWidth}
+          min={LIST_MIN_WIDTH}
+          max={LIST_MAX_WIDTH}
+          onChange={listPane.setWidth}
+          label="Resize the event list"
+        />
         <StoryboardDetailPane
           paneRef={detailRef}
           event={selectedEvent}

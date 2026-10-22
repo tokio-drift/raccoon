@@ -69,7 +69,9 @@ export function StreamRow({
         <span className="stream-row__name">{`Stream ${streamId}`}</span>
         {protocol ? <span className="tag tag--plain">{protocol}</span> : null}
         {child && childLabel ? (
-          <span className="stream-row__child">{childLabel}</span>
+          <span className="stream-row__child" dir="auto">
+            {childLabel}
+          </span>
         ) : null}
         <span className="stream-row__flags">
           {hasGap ? (
@@ -90,7 +92,11 @@ export function StreamRow({
           ) : null}
         </span>
       </div>
-      {endpoints ? <span className="stream-row__endpoints">{endpoints}</span> : null}
+      {endpoints ? (
+        <span className="stream-row__endpoints" dir="auto">
+          {endpoints}
+        </span>
+      ) : null}
       <span className="stream-row__bytes">
         {bytesC2S === undefined ? null : <span>{`${bytesC2S} B ↑`}</span>}
         {bytesS2C === undefined ? null : <span>{`${bytesS2C} B ↓`}</span>}

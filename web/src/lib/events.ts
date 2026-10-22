@@ -1,4 +1,5 @@
 import type { CaseEvent, Severity } from '../api/types'
+import { truncateIPv6 } from './truncate'
 
 /**
  * The vocabulary of the storyboard (UI_Design.md §5.3–§5.5, §5.12). Every
@@ -62,6 +63,29 @@ export const PROTOCOL_LABELS: Record<string, string> = {
 
 const SAFE_TYPE = /^[A-Za-z0-9_ .-]{1,40}$/
 
+/** The event types this build knows (§5.12). */
+export const KNOWN_EVENT_TYPES = new Set([
+  'STREAM_OPENED',
+  'TCP_ANOMALY',
+  'FTP_LOGIN_ATTEMPT',
+  'FTP_LOGIN_SUCCESS',
+  'FTP_LOGIN_FAILED',
+  'FTP_COMMAND',
+  'FTP_FILE_TRANSFER',
+  'HTTP_TRANSACTION',
+  'DNS_QUERY',
+  'FILE_CARVED',
+  'THREAT_VERDICT',
+  'FINDING',
+  'GROUP',
+  'OPAQUE_REGION',
+])
+
+/** True when the event type is not one this build knows (§5.12). */
+export function isUnknownEventType(type: string): boolean {
+  return !KNOWN_EVENT_TYPES.has(type ?? '')
+}
+
 /**
  * The plain words of an event type: "FTP_LOGIN_FAILED" becomes "FTP login
  * failed". A type that does not look like a plain name is shown as
@@ -82,6 +106,19 @@ export function typeLabel(type: string): string {
   const [first, ...rest] = words
   const head = ACRONYMS.has(first.toLowerCase()) ? first : first.charAt(0).toUpperCase() + first.slice(1)
   return [head, ...rest].join(' ')
+}
+
+/**
+ * The chip of an event type this build does not know: the raw type with the
+ * underscores as spaces and the first letter capital, for example
+ * "WEIRD PACKET KIND". A type that does not look like a plain name is
+ * "Other event" (§5.12).
+ */
+export function unknownTypeLabel(type: string): string {
+  if (!SAFE_TYPE.test(type)) return 'Other event'
+  const words = type.replace(/[_-]+/g, ' ').trim()
+  if (!words) return 'Other event'
+  return words.charAt(0).toUpperCase() + words.slice(1)
 }
 
 /** The protocol tag of a card: "FTP", "FTP data", "HTTP" or "Other" (§5.3). */
@@ -129,6 +166,23 @@ export function formatEndpoints(src: string, dst: string): string | null {
   if (!from) return to
   if (!to) return from
   return `${from} → ${to}`
+}
+
+/**
+ * The endpoints of a card, with a long IPv6 address elided in the middle
+ * (§5.10, §12.9). The full value is always in the tooltip and in the detail
+ * pane, and the copy always copies the full value.
+ */
+export function endpointsForCard(src: string, dst: string): string | null {
+  const from = formatEndpoint(src ?? '')
+  const to = formatEndpoint(dst ?? '')
+  const short = (value: string) => (value.includes(':') ? truncateIPv6(value) : value)
+  const left = short(from)
+  const right = short(to)
+  if (!left && !right) return null
+  if (!left) return right
+  if (!right) return left
+  return `${left} \u2192 ${right}`
 }
 
 /** The accessible reading of the endpoints: "from … to …" (§5.10). */

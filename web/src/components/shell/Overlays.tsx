@@ -194,12 +194,33 @@ export function SettingsPopover({ onClose }: { onClose: () => void }): JSX.Eleme
 }
 
 /** The export dialog (P2, UI_Design.md §8.12). The report endpoint arrives later. */
-export function ExportDialog({ onClose }: { onClose: () => void }): JSX.Element {
+export function ExportDialog({
+  onClose,
+  partial = false,
+  notChecked = 0,
+  hasCredentials = false,
+}: {
+  onClose: () => void
+  /** The analysis stopped early, so the report is marked as partial (§8.5). */
+  partial?: boolean
+  /** The number of files whose threat check never arrived. */
+  notChecked?: number
+  /** A credential was sent in cleartext and is part of the report. */
+  hasCredentials?: boolean
+}): JSX.Element {
   return (
     <Modal title="Export report" onClose={onClose}>
       <p>A single report of this case: summary, storyboard, files and their threat check results.</p>
       <p className="text-secondary">HTML report</p>
-      <p className="text-secondary">The report includes passwords that were sent in cleartext.</p>
+      {hasCredentials ? (
+        <p className="text-secondary">The report includes passwords that were sent in cleartext.</p>
+      ) : null}
+      {notChecked > 0 ? (
+        <p className="text-secondary">{`${notChecked} files are still marked Not checked.`}</p>
+      ) : null}
+      {partial ? (
+        <p className="text-secondary">Report will be marked as partial.</p>
+      ) : null}
       <div className="overlay__actions">
         <Button variant="secondary" onClick={onClose} data-overlay-cancel>
           Cancel

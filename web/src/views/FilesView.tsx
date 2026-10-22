@@ -12,6 +12,7 @@ import { EmptyState, ErrorState } from '../components/primitives/States'
 import { useToast } from '../components/primitives/Toast'
 import { useFiles } from '../hooks/useFiles'
 import { useIsWide } from '../hooks/useMediaQuery'
+import { useVirtualRows } from '../hooks/useVirtualRows'
 import {
   controlCharacterTokens,
   displayName,
@@ -53,7 +54,11 @@ export interface FilesViewProps {
   verdicts: Record<number, VerdictEvent>
   /** The analysis is still running; the checks are still arriving. */
   partial?: boolean
+  /** The analysis stopped early; the results are partial (§8.5). */
+  partialResults?: boolean
   onOpenStreams: () => void
+  /** The reader opens the file in the stream inspector. */
+  onShowInStream?: (file: CarvedFile) => void
   headingRef?: RefObject<HTMLHeadingElement>
 }
 
@@ -72,7 +77,9 @@ export function FilesView({
   onParamsChange,
   verdicts,
   partial = false,
+  partialResults = false,
   onOpenStreams,
+  onShowInStream: onShowInStreamProp,
   headingRef,
 }: FilesViewProps): JSX.Element {
   const { navigate } = useRoute()
@@ -148,7 +155,12 @@ export function FilesView({
   )
 
   const [downloads, setDownloads] = useState<Record<number, DownloadState>>({})
+  const tableAreaRef = useRef<HTMLDivElement>(null)
   const [dialogFile, setDialogFile] = useState<CarvedFile | null>(null)
+
+  // A table with many files renders only the rows near the viewport
+  // (§14.6); a short table is rendered as a whole.
+  const tableWindow = useVirtualRows({ count: files.rows.length, containerRef: tableAreaRef })
 
   const save = useCallback(
     async (file: CarvedFile) => {
@@ -238,11 +250,15 @@ export function FilesView({
 
   const onShowInStream = useCallback(
     (file: CarvedFile) => {
+      if (onShowInStreamProp) {
+        onShowInStreamProp(file)
+        return
+      }
       navigate(
         `/case/${encodeURIComponent(caseId)}/streams?stream=${file.streamId}&dir=${file.dir}&offset=${file.startOff}`,
       )
     },
-    [caseId, navigate],
+    [caseId, navigate, onShowInStreamProp],
   )
 
   const onShowSourceEvent = useCallback(
@@ -258,6 +274,13 @@ export function FilesView({
     () => setFilters({ ...filters, verdicts: [], formats: [], dir: null, extractions: [], query: '', showLowConfidence: false }),
     [filters],
   )
+
+  // "Reset view" puts the view back to its start: no filter, no search and no
+  // selection (UI_Design.md §3.6).
+  const resetView = useCallback(() => {
+    clearAll()
+    files.select(null)
+  }, [clearAll, files])
 
   // The diagnostic text of a failed download never holds the session token.
   const copyDiagnostics = useCallback(() => {
@@ -369,6 +392,9 @@ export function FilesView({
         <h1 className="files__title" tabIndex={-1} ref={headingRef}>
           Extracted files
         </h1>
+        {partialResults ? (
+          <span className="tag tag--warning">Partial</span>
+        ) : null}
         <p className="files__subtitle">
           Files RACCOON found in the traffic. Nothing here is opened or previewed.
         </p>
@@ -381,6 +407,7 @@ export function FilesView({
         matching={files.filtered.length}
         formats={files.formats}
         onClearAll={clearAll}
+        onResetView={resetView}
         searchRef={searchRef}
       />
 
@@ -416,7 +443,7 @@ export function FilesView({
       ) : null}
 
       <div className="files__body">
-        <div className="files__table-area">
+        <div className="files__table-area" ref={tableAreaRef}>
           {files.loading ? (
             <div className="files__skeletons">
               {Array.from({ length: 5 }).map((_, index) => (
@@ -464,7 +491,12 @@ export function FilesView({
               columns={columns}
               caption={`${files.rows.length} extracted files`}
             >
-              {files.rows.map((file, index) => {
+              {tableWindow.virtualised ? (
+                <tr className="table__spacer" aria-hidden="true">
+                  <td colSpan={columns.length} style={{ height: tableWindow.topPad }} />
+                </tr>
+              ) : null}
+              {files.rows.slice(tableWindow.start, tableWindow.end).map((file, index) => {
                 const endpoints = fileEndpoints(file, files.streams.get(file.streamId))
                 const download = downloads[file.id] ?? NO_DOWNLOAD
                 return (
@@ -503,7 +535,7 @@ export function FilesView({
                     lowConfidence={file.confidence === 'low'}
                     updated={files.updatedIds.includes(file.id)}
                     onSelect={() => files.select(file.id)}
-                    rowIndex={index + 1}
+                    rowIndex={tableWindow.start + index + 1}
                     rowCount={files.rows.length}
                     actions={
                       <button
@@ -523,6 +555,11 @@ export function FilesView({
                   />
                 )
               })}
+              {tableWindow.virtualised ? (
+                <tr className="table__spacer" aria-hidden="true">
+                  <td colSpan={columns.length} style={{ height: tableWindow.bottomPad }} />
+                </tr>
+              ) : null}
             </ArtifactTable>
           )}
         </div>

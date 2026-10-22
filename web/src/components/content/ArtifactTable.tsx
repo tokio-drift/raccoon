@@ -177,7 +177,7 @@ export function ArtifactRow({
       <td className="table__cell">
         <span className="artifact-cell__name">
           {icon ? <Icon name={icon} size={18} /> : null}
-          <span className="artifact-cell__title" title={name}>
+          <span className="artifact-cell__title" title={name} dir="auto">
             {shortName ?? name}
           </span>
           {nameSubline ? <span className="artifact-cell__subline">{nameSubline}</span> : null}

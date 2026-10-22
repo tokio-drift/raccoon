@@ -22,6 +22,7 @@ export type IconName =
   | 'tcp'
   | 'udp'
   | 'unknown-proto'
+  | 'unknown-event'
   | 'file'
   | 'archive'
   | 'image'
@@ -156,6 +157,14 @@ const PATHS: Record<IconName, ReactNode> = {
   'unknown-proto': (
     <>
       <rect x="4" y="4" width="16" height="16" rx="2" {...STROKE} />
+      <path d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4V13" {...STROKE} />
+      <circle cx="12" cy="16.5" r="0.75" fill="currentColor" stroke="none" />
+    </>
+  ),
+  // The generic card of an event type this build does not know (§5.12).
+  'unknown-event': (
+    <>
+      <rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3 3" {...STROKE} />
       <path d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4V13" {...STROKE} />
       <circle cx="12" cy="16.5" r="0.75" fill="currentColor" stroke="none" />
     </>

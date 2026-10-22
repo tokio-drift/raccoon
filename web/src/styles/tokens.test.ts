@@ -148,14 +148,21 @@ describe('shape, spacing, motion and layout tokens', () => {
 
 describe('the page applies the theme before the first paint', () => {
   it('loads the theme script before the application bundle', () => {
-    const themeScript = indexHtml.indexOf('raccoon.theme')
+    const themeScript = indexHtml.indexOf('/theme.js')
     const bundle = indexHtml.indexOf('/src/main.tsx')
     expect(themeScript).toBeGreaterThan(-1)
     expect(bundle).toBeGreaterThan(-1)
     expect(themeScript).toBeLessThan(bundle)
   })
 
+  it('reads the stored theme in the script that runs first', () => {
+    const theme = readFileSync(join(projectRoot, 'public/theme.js'), 'utf8')
+    expect(theme).toContain("getItem('raccoon.theme')")
+    expect(theme).toContain("setAttribute('data-theme', theme)")
+  })
+
   it('does not reference any remote asset', () => {
-    expect(indexHtml).not.toMatch(/https?:\/\//)
+    // The only URL allowed here is the SVG namespace of the inline favicon.
+    expect(indexHtml).not.toMatch(/https?:\/\/(?!www\.w3\.org)/)
   })
 })

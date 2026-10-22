@@ -30,6 +30,7 @@ export function TextBlock({
         className="text-block"
         style={expanded ? undefined : { maxHeight }}
         data-expanded={expanded ? 'true' : undefined}
+        dir="auto"
       >
         {value}
       </div>

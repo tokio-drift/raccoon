@@ -110,6 +110,12 @@ export interface CarvedRange {
   end: number
 }
 
+/** A range of bytes that was never captured. */
+export interface StreamGap {
+  off: number
+  len: number
+}
+
 export interface StreamBytes {
   streamId: number
   dir: Direction
@@ -118,6 +124,7 @@ export interface StreamBytes {
   total: number
   dataBase64: string
   segments: StreamSegment[]
+  gaps?: StreamGap[]
   carved: CarvedRange[]
 }
 

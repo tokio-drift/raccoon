@@ -46,6 +46,8 @@ export interface FilesFilterBarProps {
   /** The formats present in the case. */
   formats: string[]
   onClearAll: () => void
+  /** The view is reset: the filters, the search and the selection (§3.6). */
+  onResetView: () => void
   /** The reference of the search field; "/" focuses it. */
   searchRef?: RefObject<HTMLInputElement>
 }
@@ -57,6 +59,7 @@ export function FilesFilterBar({
   matching,
   formats,
   onClearAll,
+  onResetView,
   searchRef,
 }: FilesFilterBarProps): JSX.Element {
   // The search field waits 250 ms before it filters, so a long word does not
@@ -157,6 +160,10 @@ export function FilesFilterBar({
             Clear all
           </button>
         ) : null}
+
+        <button type="button" className="button button--tertiary" onClick={onResetView}>
+          Reset view
+        </button>
       </div>
 
       {active ? (

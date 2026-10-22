@@ -175,3 +175,80 @@ a {
     scroll-behavior: auto !important;
   }
 }
+
+/* ------------------------------------------------------------------- print */
+/* The print stylesheet of the design (UI_Design.md C13): the current view is
+   printed in the light theme and without the chrome of the app. */
+
+@media print {
+  :root,
+  [data-theme] {
+    color-scheme: light;
+    --bg-page: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-sunken: #f7f3ec;
+    --border-subtle: #d8d2c6;
+    --border-strong: #6f6558;
+    --text-primary: #201c19;
+    --text-secondary: #4a4139;
+    --text-muted: #5f554a;
+    --accent: #6b4025;
+    --accent-hover: #55311c;
+    --accent-on: #ffffff;
+    --accent-tint: #f0e5d8;
+    --focus-ring: #1f6b66;
+    --evidence: #1f6b66;
+    --info: #2f6389;
+    --info-tint: #eef3f6;
+    --warning: #8f4707;
+    --warning-tint: #f8ece0;
+    --critical: #96271c;
+    --critical-tint: #f7e3df;
+    --text-on-warning-tint: #8a4506;
+    --text-on-critical-tint: #8c2217;
+    --text-on-info-tint: #264f6e;
+    --text-on-accent-tint: #4a2e19;
+    --neutral-status: #55633a;
+  }
+
+  .app-header,
+  .case-strip,
+  .status-bar,
+  .banner-slot,
+  .incident-strip-slot,
+  .toast-region,
+  .skip-link,
+  .overlay,
+  .pane-resizer,
+  .storyboard__divider {
+    display: none !important;
+  }
+
+  .app-shell {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+
+  .content-area,
+  .content-scroll,
+  .storyboard__body,
+  .streams-view__body,
+  .storyboard__list-pane,
+  .storyboard-detail,
+  .streams-panes,
+  .streams-pane__scroll {
+    display: block;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .event-card,
+  .group-card,
+  .table__row,
+  .streams-pane,
+  .file-row {
+    break-inside: avoid;
+  }
+}

@@ -6,7 +6,11 @@ import react from '@vitejs/plugin-react'
 // and never references a remote asset.
 export default defineConfig({
   plugins: [react()],
-  base: './',
+  // The server serves the app from the root, so the assets are addressed
+  // absolutely. A relative path would break a reload on a deep link such as
+  // /case/{id}/storyboard, where the browser would look for the assets under
+  // the case path.
+  base: '/',
   build: {
     outDir: 'dist',
     emptyOutDir: true,

@@ -42,6 +42,7 @@ export const EMPTY_FILTERS: StoryboardFilters = {
 export type StoryboardRow =
   | { kind: 'chapter'; key: string; phase: string; label: string; count: number; span: string }
   | { kind: 'date'; key: string; label: string }
+  | { kind: 'not-dated-separator'; key: string; label: string }
   | { kind: 'gap'; key: string; label: string }
   | { kind: 'event'; key: string; event: CaseEvent; depth: number }
   | {
@@ -61,12 +62,20 @@ export const MIN_GAP_MS = 5000
 /** The share of the capture duration that also shows a gap marker. */
 export const GAP_SHARE = 0.1
 
-/** Sorts the events by the order of the server: (ts, id) ascending. */
+/**
+ * Sorts the events by the order of the server: (ts, id) ascending. An event
+ * without a time has no place in the time line, so it goes to the end of the
+ * feed, ordered by packet number (§5.12).
+ */
 export function sortEvents(events: CaseEvent[]): CaseEvent[] {
   return [...events].sort((a, b) => {
     const left = parseTimestamp(a.ts)
     const right = parseTimestamp(b.ts)
-    if (left !== right) return left - right
+    const leftDated = left > 0
+    const rightDated = right > 0
+    if (leftDated !== rightDated) return leftDated ? -1 : 1
+    if (leftDated && left !== right) return left - right
+    if (!leftDated && a.packetNo !== b.packetNo) return a.packetNo - b.packetNo
     return a.id - b.id
   })
 }
@@ -224,8 +233,19 @@ export function buildRows(events: CaseEvent[], options: BuildRowsOptions = {}): 
   const emitRun = (run: CaseEvent[]): void => {
     let lastDay = ''
     let lastTs: number | null = null
+    let undatedShown = false
     for (const event of run) {
       const ts = parseTimestamp(event.ts)
+      if (!event.ts) {
+        // The events without a time are the last ones and a separator says
+        // why they are out of the time line (§5.12).
+        if (!undatedShown) {
+          undatedShown = true
+          rows.push({ kind: 'not-dated-separator', key: `not-dated-${event.id}`, label: 'Not dated' })
+        }
+        emitEvent(event, 0)
+        continue
+      }
       const day = dayKey(ts, basis)
       if (lastDay && day !== lastDay) {
         rows.push({

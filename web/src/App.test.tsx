@@ -237,10 +237,24 @@ describe('app shell', () => {
 
   it('keeps the export control disabled until the report exists', async () => {
     window.history.replaceState({}, '', '/case/20260101-120000-abcdef')
-    stubFetch(() => jsonResponse(READY_CASE))
+    stubFetch(() => jsonResponse({ ...READY_CASE, status: 'running', stage: 'process', progress: 40 }))
     render(<App />)
     await screen.findByText('ftp_upload_png.pcap')
     expect(screen.getByRole('button', { name: /Export report/ })).toBeDisabled()
+  })
+
+  it('offers the export once the storyboard is ready', async () => {
+    window.history.replaceState({}, '', '/case/20260101-120000-abcdef')
+    stubFetch(() => jsonResponse(READY_CASE))
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByText('ftp_upload_png.pcap')
+
+    const button = screen.getByRole('button', { name: /Export report/ })
+    expect(button).toBeEnabled()
+    await user.click(button)
+    const dialog = await screen.findByRole('dialog', { name: 'Export report' })
+    expect(within(dialog).getByText(/A single report of this case/)).toBeInTheDocument()
   })
 
   it('navigates between the case tabs', async () => {
@@ -282,11 +296,24 @@ describe('app shell', () => {
 
   it('shows the case-not-found message for an unknown case', async () => {
     window.history.replaceState({}, '', '/case/missing')
-    stubFetch(() => jsonResponse({ error: { code: 'not_found', message: 'no such case' } }, 404))
+    const asked: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        asked.push(String(input))
+        return jsonResponse({ error: { code: 'not_found', message: 'no such case' } }, 404)
+      }),
+    )
     render(<App />)
     expect(
       await screen.findByText(/We can't find that case\./),
     ).toBeInTheDocument()
+    // The case does not exist, so the app stops following its event stream
+    // instead of asking the server for a case that is not there, again and
+    // again. The first retry would come a second later.
+    await waitFor(() => expect(asked.length).toBeGreaterThan(0))
+    await new Promise((resolve) => setTimeout(resolve, 1300))
+    expect(asked.filter((url) => url.includes('/events/stream'))).toHaveLength(1)
   })
 
   it('shows the connection page when the local server does not answer', async () => {

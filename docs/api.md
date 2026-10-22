@@ -264,7 +264,11 @@ Reads a window of the reassembled stream.
 
 The response includes `dataBase64` (the requested window) plus the segment
 ranges that overlap it (for direction colouring) and carved file ranges that
-fall inside the window.
+fall inside the window. The offsets are the offsets of the delivered bytes:
+`segments[].off` and `carved[].start`/`end` count the same bytes as `offset`,
+so they can be compared with the window directly. `gaps` lists the ranges of
+bytes that were never captured; the offset of a gap is the position the
+missing bytes take between two segments.
 
 ```json
 {
@@ -276,6 +280,9 @@ fall inside the window.
   "dataBase64": "VVNFUiBib2IA",
   "segments": [
     { "off": 0, "len": 32, "ts": "2026-01-01T12:00:00.500000000Z", "packetNo": 5 }
+  ],
+  "gaps": [
+    { "off": 32, "len": 16 }
   ],
   "carved": [
     { "fileId": 1, "start": 0, "end": 64 }

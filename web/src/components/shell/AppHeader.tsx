@@ -10,8 +10,14 @@ export interface AppHeaderProps {
   caseSummary: CaseSummary | null
   statusKind: StatusKind
   statusLabel: string
-  /** The storyboard is ready, so the export control could be used. */
-  timelineReady: boolean
+  /**
+   * The report can be exported: the timeline is ready, the case is ready or
+   * the analysis failed with usable data (UI_Design.md §8.12). While the
+   * analysis runs before the timeline is ready, the control is disabled.
+   */
+  exportAvailable?: boolean
+  /** The connection is lost, so a new capture cannot be uploaded. */
+  disconnected?: boolean
   onOpenDashboard: () => void
   onUpload: () => void
   onExport: () => void
@@ -24,7 +30,8 @@ export function AppHeader({
   caseSummary,
   statusKind,
   statusLabel,
-  timelineReady,
+  exportAvailable = false,
+  disconnected = false,
   onOpenDashboard,
   onUpload,
   onExport,
@@ -32,8 +39,8 @@ export function AppHeader({
   onHelp,
 }: AppHeaderProps): JSX.Element {
   const fileName = caseSummary?.fileName ?? ''
-  const exportTitle = timelineReady
-    ? 'Report export is not available in this build.'
+  const exportTitle = exportAvailable
+    ? 'Export the report of this case.'
     : 'Available when the storyboard is ready.'
 
   return (
@@ -54,6 +61,7 @@ export function AppHeader({
         <div className="app-header__case">
           <span
             className="app-header__case-name"
+            dir="auto"
             title={`${fileName} · ${formatCount(caseSummary.size)} bytes · SHA-256 ${caseSummary.pcapSha256} · RACCOON ${caseSummary.toolVersion}`}
           >
             {fileName}
@@ -65,10 +73,22 @@ export function AppHeader({
       )}
 
       <div className="app-header__actions">
-        <Button variant="secondary" icon="upload" onClick={onUpload}>
+        <Button
+          variant="secondary"
+          icon="upload"
+          onClick={onUpload}
+          disabled={disconnected}
+          title={disconnected ? 'RACCOON cannot reach the local server right now.' : undefined}
+        >
           Upload new capture
         </Button>
-        <Button variant="primary" icon="export" onClick={onExport} disabled title={exportTitle}>
+        <Button
+          variant="primary"
+          icon="export"
+          onClick={onExport}
+          disabled={!exportAvailable}
+          title={exportTitle}
+        >
           Export report
         </Button>
         <IconButton icon="settings" label="Settings" onClick={onSettings} />
@@ -116,23 +136,34 @@ export function CaseStats({ caseSummary }: { caseSummary: CaseSummary | null }):
   const durationMs = caseSummary.durationNs / 1_000_000
   return (
     <span className="case-strip__stats">
-      <span title={`A packet is a small chunk of data on the network. ${formatCount(caseSummary.packets)} packets were in this capture.`}>
+      <span
+        className="case-strip__stat"
+        title={`A packet is a small chunk of data on the network. ${formatCount(caseSummary.packets)} packets were in this capture.`}
+      >
         {formatCount(caseSummary.packets)} packets
       </span>
-      {' · '}
-      <span title="A stream is one conversation between two computers.">
+      <span
+        className="case-strip__stat"
+        title="A stream is one conversation between two computers."
+      >
         {formatCount(caseSummary.streams)} streams
       </span>
-      {' · '}
-      <span title={`${formatCount(caseSummary.events)} events were found in this capture.`}>
+      <span
+        className="case-strip__stat case-strip__stat--events"
+        title={`${formatCount(caseSummary.events)} events were found in this capture.`}
+      >
         {formatCount(caseSummary.events)} events
       </span>
-      {' · '}
-      <span title={`${formatCount(caseSummary.files)} files were extracted from this capture.`}>
+      <span
+        className="case-strip__stat case-strip__stat--files"
+        title={`${formatCount(caseSummary.files)} files were extracted from this capture.`}
+      >
         {formatCount(caseSummary.files)} files
       </span>
-      {' · '}
-      <span title={`The capture covers ${formatDuration(durationMs)} of network time.`}>
+      <span
+        className="case-strip__stat"
+        title={`The capture covers ${formatDuration(durationMs)} of network time.`}
+      >
         {formatDuration(durationMs)} capture
       </span>
     </span>

@@ -16,13 +16,16 @@ import { EvidenceChip } from '../components/content/EvidenceChip'
 import { LoadMorePill } from '../components/primitives/Pagination'
 import {
   eventSeverity,
+  endpointsForCard,
   endpointsLabel,
   formatEndpoints,
   findingEvidenceCount,
   isFindingEvent,
+  isUnknownEventType,
   protocolLabel,
   typeLabel,
   uncertaintyTags,
+  unknownTypeLabel,
 } from '../lib/events'
 import { formatClock, formatDuration, formatElapsed, parseTimestamp } from '../lib/format'
 import type { StoryboardRow } from '../lib/storyboard'
@@ -197,6 +200,23 @@ export function StoryboardList({
 
   const range = computeVirtualRange(offsets, heights, scrollTop, viewportHeight)
 
+  // The number of the row inside the list of events, for `aria-posinset` and
+  // `aria-setsize` (§13.1). The list is virtualised, so the screen reader
+  // needs to be told how long the whole list is.
+  const ordinals = useMemo(() => {
+    const list: number[] = []
+    let count = 0
+    for (const row of rows) {
+      if (row.kind === 'event' || row.kind === 'group') {
+        count += 1
+        list.push(count)
+      } else {
+        list.push(0)
+      }
+    }
+    return { list, total: count }
+  }, [rows])
+
   return (
     <div className="storyboard-list" ref={scrollRef} onScroll={onScroll} tabIndex={-1}>
       {newCount > 0 ? (
@@ -204,18 +224,26 @@ export function StoryboardList({
           <LoadMorePill count={newCount} noun="events" onShow={onShowNew} />
         </div>
       ) : null}
-      <div className="storyboard-list__canvas" style={{ height: range.totalHeight }}>
+      <div
+        className="storyboard-list__canvas"
+        style={{ height: range.totalHeight }}
+        role="list"
+        aria-label="Storyboard events"
+      >
         {rows.slice(range.start, range.end).map((row, index) => {
           const top = offsets[range.start + index]
+          const ordinal = ordinals.list[range.start + index] ?? 0
           return (
             <div
               key={row.key}
               className="storyboard-list__row"
               data-event-id={'event' in row ? row.event.id : undefined}
+              role="presentation"
               style={{ transform: `translateY(${top}px)` }}
             >
               <StoryboardRowView
                 row={row}
+                position={ordinal > 0 ? { index: ordinal, total: ordinals.total } : undefined}
                 selectedId={selectedId}
                 onSelect={onSelect}
                 expandedGroups={expandedGroups}
@@ -238,6 +266,8 @@ export function StoryboardList({
 
 interface RowViewProps {
   row: StoryboardRow
+  /** The place of the row in the list of events, for the screen reader. */
+  position?: { index: number; total: number }
   selectedId: number | null
   onSelect: (id: number) => void
   expandedGroups: number[]
@@ -254,6 +284,7 @@ interface RowViewProps {
 /** Renders one row of the feed. */
 function StoryboardRowView({
   row,
+  position,
   selectedId,
   onSelect,
   expandedGroups,
@@ -277,6 +308,14 @@ function StoryboardRowView({
   if (row.kind === 'date') {
     return (
       <div className="storyboard-list__date">
+        <span>{row.label}</span>
+      </div>
+    )
+  }
+
+  if (row.kind === 'not-dated-separator') {
+    return (
+      <div className="storyboard-list__not-dated">
         <span>{row.label}</span>
       </div>
     )
@@ -309,6 +348,7 @@ function StoryboardRowView({
     return (
       <div className={row.depth > 0 ? 'storyboard-list__row storyboard-list__row--child' : 'storyboard-list__row'}>
         <GroupCard
+          position={position}
           severity={severity}
           title={row.event.title || typeLabel(row.event.type)}
           count={row.total}
@@ -348,13 +388,20 @@ function StoryboardRowView({
       }
     >
       <EventCard
+        position={position}
         severity={severity}
         elapsed={formatElapsed(ts - captureStart)}
         wallClock={formatClock(ts, { basis })}
-        typeLabel={typeLabel(event.type)}
+        unknownTime={!event.ts}
+        unknownType={isUnknownEventType(event.type)}
+        typeLabel={
+          isUnknownEventType(event.type) ? unknownTypeLabel(event.type) : typeLabel(event.type)
+        }
         protocol={protocolLabel(event.proto)}
         title={event.title || typeLabel(event.type)}
+        mutedTitle={!event.title}
         endpoints={endpointsText(event)}
+        endpointsFull={formatEndpoints(event.src ?? '', event.dst ?? '') ?? undefined}
         endpointsLabel={endpointsLabel(event.src ?? '', event.dst ?? '') || undefined}
         packetRange={packetLabel(event) ?? undefined}
         onPacketRange={
@@ -441,7 +488,7 @@ function groupSeverity(event: CaseEvent, children: CaseEvent[]): 'info' | 'warni
 
 /** The endpoints of a card, or null when the event has none. */
 function endpointsText(event: CaseEvent): string | undefined {
-  return formatEndpoints(event.src ?? '', event.dst ?? '') ?? undefined
+  return endpointsForCard(event.src ?? '', event.dst ?? '') ?? undefined
 }
 
 /** The packet range of an event, or null when it has none. */

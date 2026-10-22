@@ -5,17 +5,30 @@ import { SeverityBadge, type Severity } from './Badges'
 
 export interface EventCardProps {
   severity: Severity
+  /**
+   * The place of the card in the virtualised list, so the screen reader knows
+   * how long the whole list is (§13.1).
+   */
+  position?: { index: number; total: number }
   /** The elapsed time from the capture start, for example "+00:12.431". */
   elapsed: string
   /** The wall-clock time of day, for example "14:03:07.431". */
   wallClock: string
+  /** The event has no time; the time block says so instead (§5.12). */
+  unknownTime?: boolean
+  /** The event type is not one this build knows (§5.12). */
+  unknownType?: boolean
   /** The event type in plain words, for example "FTP login failed". */
   typeLabel: string
   /** The protocol tag, for example "FTP". */
   protocol?: string
   title: string
+  /** The event has no title; the type words stand in for it, in muted text. */
+  mutedTitle?: boolean
   /** The endpoints, for example "192.0.2.14:51822 → 192.0.2.50:21". */
   endpoints?: string
+  /** The full endpoints, for the tooltip; a long IPv6 is elided in the text. */
+  endpointsFull?: string
   /** The reading of the endpoints, "from … to …", for the screen reader. */
   endpointsLabel?: string
   /** The packet range chip, for example "pkts 14–19". */
@@ -42,12 +55,17 @@ export interface EventCardProps {
  */
 export function EventCard({
   severity,
+  position,
   elapsed,
   wallClock,
+  unknownTime = false,
+  unknownType = false,
   typeLabel,
   protocol,
   title,
+  mutedTitle = false,
   endpoints,
+  endpointsFull,
   endpointsLabel,
   packetRange,
   onPacketRange,
@@ -78,6 +96,8 @@ export function EventCard({
       tabIndex={0}
       role="listitem"
       aria-expanded={expanded}
+      aria-posinset={position?.index}
+      aria-setsize={position?.total}
       onKeyDown={onKeyDown}
       onClick={onOpen}
     >
@@ -86,17 +106,35 @@ export function EventCard({
         <div className="event-card__top">
           <SeverityBadge severity={severity} />
           <div className="event-card__time">
-            <span className="event-card__elapsed">{elapsed}</span>
-            <span className="event-card__wall">{wallClock}</span>
+            {unknownTime ? (
+              <span className="event-card__unknown-time">Time unknown</span>
+            ) : (
+              <>
+                <span className="event-card__elapsed">{elapsed}</span>
+                <span className="event-card__wall">{wallClock}</span>
+              </>
+            )}
           </div>
+          {unknownType ? (
+            <span className="event-card__unknown-type" title="This build does not know this event type.">
+              <Icon name="unknown-event" size={14} />
+            </span>
+          ) : null}
           <span className="event-card__type">{typeLabel}</span>
           {protocol ? <span className="tag tag--plain">{protocol}</span> : null}
           {badges}
         </div>
-        <p className="event-card__title">{title}</p>
+        <p className={mutedTitle ? 'event-card__title event-card__title--muted' : 'event-card__title'} dir="auto">
+          {title}
+        </p>
         <div className="event-card__foot">
           {endpoints ? (
-            <span className="event-card__endpoints" aria-label={endpointsLabel} title={endpoints}>
+            <span
+              className="event-card__endpoints"
+              aria-label={endpointsLabel}
+              title={endpointsFull ?? endpoints}
+              dir="auto"
+            >
               {endpoints}
             </span>
           ) : null}
@@ -143,6 +181,10 @@ export function EventCard({
 export interface GroupCardProps {
   severity: Severity
   title: string
+  /**
+   * The place of the group in the virtualised list (§13.1).
+   */
+  position?: { index: number; total: number }
   /** The number of events in the group. */
   count: number
   /** The sub-line, for example "12 events over 8.4 s · pkts 14–61". */
@@ -160,6 +202,7 @@ export interface GroupCardProps {
 export function GroupCard({
   severity,
   title,
+  position,
   count,
   subline,
   expanded = false,
@@ -168,7 +211,13 @@ export function GroupCard({
 }: GroupCardProps): JSX.Element {
   return (
     <div className={expanded ? 'group-card group-card--expanded' : 'group-card'}>
-      <article className={`event-card event-card--${severity}`} tabIndex={0}>
+      <article
+        className={`event-card event-card--${severity}`}
+        tabIndex={0}
+        role="listitem"
+        aria-posinset={position?.index}
+        aria-setsize={position?.total}
+      >
         <span className={`event-card__rail event-card__rail--${severity}`} aria-hidden="true" />
         <div className="event-card__main">
           <div className="event-card__top">
@@ -176,7 +225,9 @@ export function GroupCard({
             <Icon name="group" size={16} />
             <span className="group-card__count">{`×${count}`}</span>
           </div>
-          <p className="event-card__title">{title}</p>
+          <p className="event-card__title" dir="auto">
+          {title}
+        </p>
           {subline ? <p className="group-card__subline">{subline}</p> : null}
         </div>
         <button

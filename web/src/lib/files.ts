@@ -191,8 +191,8 @@ export function fileVerdict(file: CarvedFile): VerdictStatus {
  */
 export function neutralDownloadName(sha256: string): string {
   const hex = (sha256 ?? '').trim().toLowerCase()
-  const clean = hex.replace(/[^0-9a-f]/g, '').slice(0, 12)
-  return clean.length > 0 ? `${clean}.bin` : 'download.bin'
+  const prefix = hex.replace(/[^0-9a-f]/g, '').slice(0, 12)
+  return prefix.length > 0 ? `${prefix}.bin` : 'download.bin'
 }
 
 /** The magic bytes of a file as spaced hex pairs: "89 50 4E 47". */

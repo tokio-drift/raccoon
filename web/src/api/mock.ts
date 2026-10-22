@@ -145,6 +145,9 @@ export class MockApi implements RaccoonApi {
       segments: window.segments.filter(
         (segment) => segment.off < offset + length && segment.off + segment.len > offset,
       ),
+      gaps: (window.gaps ?? []).filter(
+        (gap) => gap.off < offset + length && gap.off + gap.len > offset,
+      ),
       carved: window.carved.filter(
         (range) => range.start < offset + length && range.end > offset,
       ),

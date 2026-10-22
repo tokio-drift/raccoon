@@ -36,7 +36,12 @@ export function StatusBar({
         {dataAsOf ? <span className="pill">{dataAsOf}</span> : null}
       </div>
       <div className="status-bar__group">
-        <span>Local only · only file hashes are sent for threat checks</span>
+        <span className="status-bar__privacy">
+          <span className="status-bar__privacy-long">
+            Local only · only file hashes are sent for threat checks
+          </span>
+          <span className="status-bar__privacy-short">Local only</span>
+        </span>
         <button type="button" className="status-bar__button" onClick={onHelp}>
           Help
         </button>

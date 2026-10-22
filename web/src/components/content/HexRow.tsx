@@ -11,12 +11,16 @@ export interface HexRowProps {
   gap?: boolean
   /** The number of missing bytes, for a gap row. */
   missing?: number
+  /** The range of the missing bytes, for example "0x05B4–0x0B67". */
+  missingRange?: string
   /** The row starts a carved range. */
   carvedStart?: boolean
   /** The row ends a carved range. */
   carvedEnd?: boolean
   /** The carved range label, for example "invoice.zip · 5.2 KB". */
   carvedLabel?: string
+  /** The offset is shown in hexadecimal (the default) or in decimal. */
+  offsetFormat?: 'hex' | 'decimal'
 }
 
 /** The printable ASCII of a byte, or a middle dot. */
@@ -29,9 +33,16 @@ export function hexOf(byte: number): string {
   return byte.toString(16).toUpperCase().padStart(2, '0')
 }
 
+/** The offset of a row: "00004120" in hexadecimal, "16,640" in decimal. */
+export function offsetText(offset: number, format: 'hex' | 'decimal' = 'hex'): string {
+  if (format === 'decimal') return offset.toLocaleString('en-US')
+  return offset.toString(16).toUpperCase().padStart(8, '0')
+}
+
 /**
  * A row of the hex pane (UI_Design.md §7.6, §7.7, §11). The offset cell is
- * the row header; a gap is a hatched row and is never zero-filled.
+ * the row header and the packet gutter shows the packet number; a gap is a
+ * hatched row and is never zero-filled.
  */
 export function HexRow({
   offset,
@@ -39,18 +50,23 @@ export function HexRow({
   packetNo,
   gap = false,
   missing = 0,
+  missingRange,
   carvedStart = false,
   carvedEnd = false,
   carvedLabel,
+  offsetFormat = 'hex',
 }: HexRowProps): JSX.Element {
   if (gap) {
     return (
       <tr className="hex-row hex-row--gap">
+        <td className="hex-row__gutter" />
         <th scope="row" className="hex-row__offset">
-          {offset.toString(16).toUpperCase().padStart(8, '0')}
+          {offsetText(offset, offsetFormat)}
         </th>
         <td className="hex-row__gap" colSpan={18}>
-          {`Missing ${missing.toLocaleString('en-US')} bytes. These packets are not in the capture.`}
+          {`Missing ${missing.toLocaleString('en-US')} bytes${
+            missingRange ? ` (${missingRange})` : ''
+          }. These packets are not in the capture.`}
         </td>
       </tr>
     )
@@ -84,9 +100,11 @@ export function HexRow({
 
   return (
     <tr className={classes.join(' ')}>
+      <td className="hex-row__gutter">
+        {packetNo === undefined ? null : `#${packetNo}`}
+      </td>
       <th scope="row" className="hex-row__offset">
-        <span className="hex-row__packet">{packetNo === undefined ? null : `#${packetNo}`}</span>
-        {offset.toString(16).toUpperCase().padStart(8, '0')}
+        {offsetText(offset, offsetFormat)}
       </th>
       {cells}
       {text}
