@@ -302,7 +302,7 @@ describe('ArtifactTable', () => {
       'aria-sort',
       'ascending',
     )
-    expect(screen.getByText('5,294')).toBeInTheDocument()
+    expect(screen.getByText('5,294 B')).toBeInTheDocument()
   })
 
   it('shows a path-like name as text with its tag', () => {

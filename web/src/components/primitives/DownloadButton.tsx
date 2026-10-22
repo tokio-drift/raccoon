@@ -9,6 +9,8 @@ export interface DownloadButtonProps {
   onDownload: () => void
   /** The button shows a spinner while the download runs. */
   busy?: boolean
+  /** The label of the button while the download runs. */
+  busyLabel?: string
   /** The button is disabled when the file is not available. */
   disabled?: boolean
   /** The reason a disabled button cannot be used. */
@@ -26,6 +28,7 @@ export function DownloadButton({
   fileName,
   onDownload,
   busy = false,
+  busyLabel = 'Preparing…',
   disabled = false,
   disabledReason,
   variant = 'detail',
@@ -60,7 +63,7 @@ export function DownloadButton({
       title={title}
       onClick={onDownload}
     >
-      Download file
+      {busy ? busyLabel : 'Download file'}
     </Button>
   )
 }

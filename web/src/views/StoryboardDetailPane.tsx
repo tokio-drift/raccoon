@@ -23,6 +23,8 @@ export interface StoryboardDetailPaneProps {
   relatedFile?: CarvedFile | null
   /** The children of the selected event. */
   children?: CaseEvent[]
+  /** The start of the capture; the elapsed time counts from here (§5.2). */
+  captureStart?: number
   onSelectEvent: (id: number) => void
   onOpenStream?: (streamId: number, packetNo: number) => void
   onOpenFile?: (fileId: number) => void
@@ -39,6 +41,7 @@ export function StoryboardDetailPane({
   eventsById,
   relatedFile,
   children,
+  captureStart = 0,
   onSelectEvent,
   onOpenStream,
   onOpenFile,
@@ -62,9 +65,13 @@ export function StoryboardDetailPane({
   const longTitle = (event.title ?? '').length > 120
   const detailView = buildDetailView(event)
   const tags = uncertaintyTags(event)
+  // The technique of a finding is a chip of its own (§9.4).
+  const technique = findingTechniqueParts(event)
   const inFindings = (event.findingIds ?? [])
     .map((id) => findings.find((f) => f.id === id))
     .filter((f): f is CaseEvent => Boolean(f))
+  // The events that support a finding (§9.4).
+  const supportingIds = isFindingEvent(event) ? findingEventIds(event) : []
 
   return (
     <aside className="storyboard-detail" aria-label="Event details" tabIndex={-1} ref={paneRef}>
@@ -73,6 +80,11 @@ export function StoryboardDetailPane({
           <SeverityBadge severity={eventSeverity(event)} />
           <span className="tag tag--plain">{typeLabel}</span>
           {event.proto ? <span className="tag tag--plain">{event.proto.toUpperCase()}</span> : null}
+          {technique ? (
+            <span className="tag tag--technique" title={technique.name ?? technique.id}>
+              {technique.name ? `${technique.id} ${technique.name}` : technique.id}
+            </span>
+          ) : null}
           {onClose ? (
             <button
               type="button"
@@ -94,8 +106,11 @@ export function StoryboardDetailPane({
             {fullTitleOpen ? 'Show less' : 'Show full title'}
           </button>
         ) : null}
-        <p className="storyboard-detail__time">
-          {`${formatElapsed(parseTimestamp(event.ts) - 0)} · ${formatClock(parseTimestamp(event.ts), { micro: true })}`}
+        <p
+          className="storyboard-detail__time"
+          title={formatClock(parseTimestamp(event.ts), { micro: true })}
+        >
+          {`${formatElapsed(parseTimestamp(event.ts) - captureStart)} · ${formatClock(parseTimestamp(event.ts))}`}
         </p>
         {event.src || event.dst ? (
           <p className="storyboard-detail__endpoints" aria-label={endpointsLabel(event.src ?? '', event.dst ?? '')}>
@@ -135,7 +150,7 @@ export function StoryboardDetailPane({
         </DetailSection>
 
         <DetailSection title="Evidence">
-          {event.packetNo > 0 || event.streamId > 0 || event.fileId > 0 ? (
+          {event.packetNo > 0 || event.streamId > 0 || event.fileId > 0 || supportingIds.length > 0 ? (
             <div className="storyboard-detail__evidence">
               {event.packetNo > 0 ? (
                 <EvidenceChip
@@ -163,6 +178,22 @@ export function StoryboardDetailPane({
                   onClick={onOpenFile ? () => onOpenFile(event.fileId) : undefined}
                 />
               ) : null}
+              {/* A finding lists the events that support it (§9.4). */}
+              {supportingIds.map((id) => {
+                const supporting = eventsById.get(id)
+                const title = supportedTitles.get(id) ?? supporting?.title ?? `Event ${id}`
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className="storyboard-detail__link"
+                    onClick={() => onSelectEvent(id)}
+                  >
+                    <Icon name="flag" size={14} />
+                    <span>{`Event ${id}: ${title}`}</span>
+                  </button>
+                )
+              })}
             </div>
           ) : (
             <p className="storyboard-detail__muted">No packet evidence was recorded for this event.</p>
@@ -226,25 +257,6 @@ export function StoryboardDetailPane({
                     <button type="button" className="storyboard-detail__link" onClick={() => onSelectEvent(id)}>
                       <Icon name="bookmark" size={14} />
                       <span>{title}</span>
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
-          </DetailSection>
-        ) : null}
-
-        {isFindingEvent(event) && findingEventIds(event).length > 0 ? (
-          <DetailSection title="Evidence">
-            <ul className="storyboard-detail__list">
-              {findingEventIds(event).map((id) => {
-                const supporting = eventsById.get(id)
-                const title = supportedTitles.get(id) ?? supporting?.title ?? `Event ${id}`
-                return (
-                  <li key={id}>
-                    <button type="button" className="storyboard-detail__link" onClick={() => onSelectEvent(id)}>
-                      <Icon name="flag" size={14} />
-                      <span>{`Event ${id}: ${title}`}</span>
                     </button>
                   </li>
                 )
@@ -490,6 +502,7 @@ import { buildDetailView, MAX_LIST_ITEMS } from '../lib/details'
 import {
   eventSeverity,
   findingEventIds,
+  findingTechniqueParts,
   isFindingEvent,
   endpointsLabel,
   packetRangeLabel,

@@ -129,6 +129,44 @@ describe('app shell', () => {
     expect(screen.getByRole('button', { name: 'Open Streams' })).toBeInTheDocument()
   })
 
+  it('shows the files of the case', async () => {
+    window.history.replaceState({}, '', '/case/20260101-120000-abcdef/files')
+    const files = [
+      {
+        id: 7,
+        streamId: 1,
+        dir: 'c2s',
+        startOff: 0,
+        endOff: 1024,
+        format: 'PNG',
+        ext: 'png',
+        status: 'complete',
+        confidence: 'high',
+        size: 1024,
+        md5: 'd41d8cd98f00b204e9800998ecf8427e',
+        sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        displayName: 'secret.png',
+        path: 'carved/secret.png',
+        magicHex: '89504e47',
+      },
+    ]
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/events/stream')) return sseResponse()
+        if (url.includes('/events')) return jsonResponse({ items: [], nextCursor: null })
+        if (url.includes('/files')) return jsonResponse({ items: files, nextCursor: null })
+        if (url.includes('/streams')) return jsonResponse({ items: [], nextCursor: null })
+        return jsonResponse(READY_CASE)
+      }),
+    )
+    render(<App />)
+
+    expect(await screen.findByRole('region', { name: 'Extracted files' })).toBeInTheDocument()
+    expect(await screen.findByTitle('secret.png')).toBeInTheDocument()
+  })
+
   it('selects the event of a deep link', async () => {
     window.history.replaceState({}, '', '/case/20260101-120000-abcdef/storyboard?event=2')
     const events = [

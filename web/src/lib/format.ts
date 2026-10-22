@@ -41,6 +41,11 @@ export function formatBytesExact(value: number): string {
   return `${formatCount(value)} bytes`
 }
 
+/** The exact size in bytes, as "1,204 B" (§6.4). */
+export function formatByteCount(value: number): string {
+  return `${formatCount(value)} B`
+}
+
 /** Abbreviates large counts in the header strip only: 1_250_000 → "1.3M". */
 export function formatCompactCount(value: number): string {
   if (value < 1_000_000) return formatCount(value)
@@ -210,4 +215,22 @@ export function formatOffsetRange(start: number, end: number): string {
 export function formatHashShort(hash: string): string {
   if (hash.length <= 13) return hash
   return `${hash.slice(0, 8)}…${hash.slice(-4)}`
+}
+
+/**
+ * Formats a time relative to now: "3 minutes ago". It is only used for the
+ * time a threat check ran, never for a capture time.
+ */
+export function formatRelativeTime(timestampMs: number, nowMs: number = Date.now()): string {
+  const seconds = Math.round((nowMs - timestampMs) / 1000)
+  if (seconds < 45) return 'just now'
+  if (seconds < 90) return 'a minute ago'
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes} minutes ago`
+  if (minutes < 120) return 'an hour ago'
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} hours ago`
+  if (hours < 48) return 'yesterday'
+  const days = Math.round(hours / 24)
+  return `${days} days ago`
 }

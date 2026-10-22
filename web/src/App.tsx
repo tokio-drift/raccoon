@@ -23,6 +23,7 @@ import type { StageCounters } from './lib/stages'
 import { EmptyDashboard } from './views/EmptyDashboard'
 import { ProcessingView } from './views/ProcessingView'
 import { ViewPlaceholder } from './views/ViewPlaceholder'
+import { FilesView } from './views/FilesView'
 import { StoryboardView } from './views/StoryboardView'
 
 type Overlay = 'help' | 'settings' | 'shortcuts' | 'export' | 'replace' | null
@@ -308,6 +309,27 @@ export function App({ api }: AppProps): JSX.Element {
     [caseId, navigate, route],
   )
 
+  // The filters of the files gallery live in the URL (§3.2). The file the
+  // reader has selected is kept, because the filter bar does not own it.
+  const onFilesParams = useCallback(
+    (params: URLParams) => {
+      if (!caseId) return
+      const merged: URLParams = { ...params }
+      const current = route.kind === 'case' ? route.params.file : undefined
+      if (current && !merged.file) merged.file = current
+      const search = new URLSearchParams()
+      for (const [key, value] of Object.entries(merged)) {
+        if (value) search.set(key, value)
+      }
+      const query = search.toString()
+      const next = `/case/${encodeURIComponent(caseId)}/files${query ? `?${query}` : ''}`
+      const here = `${window.location.pathname}${window.location.search}`
+      if (next === here) return
+      navigate(next, { replace: true })
+    },
+    [caseId, navigate, route],
+  )
+
   // The diagnostic text never holds the session token (UI_Design.md §8.5).
   const copyDiagnostics = useCallback(() => {
     const text = buildDiagnostics({
@@ -499,9 +521,14 @@ export function App({ api }: AppProps): JSX.Element {
             lastUpdateAt={events.lastUpdateAt}
           />
         ) : view === 'files' ? (
-          <ViewPlaceholder
-            title="Extracted files"
-            description="Files RACCOON found in the traffic. Nothing here is opened or previewed."
+          <FilesView
+            caseId={caseId as string}
+            api={client}
+            params={route.kind === 'case' ? route.params : {}}
+            onParamsChange={onFilesParams}
+            verdicts={events.verdicts}
+            partial={running}
+            onOpenStreams={() => caseId && navigate(`/case/${encodeURIComponent(caseId)}/streams`)}
           />
         ) : view === 'streams' ? (
           <ViewPlaceholder

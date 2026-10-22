@@ -1034,6 +1034,96 @@
   color: var(--text-muted);
 }
 
+/* The technique of a finding (§9.4): a neutral outline, text only. */
+.tag--technique {
+  border-style: solid;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+/* A tag that warns about a file (§6.2, §6.3). */
+.tag--warning {
+  border-style: solid;
+  border-color: var(--warning);
+  color: var(--warning);
+  background: var(--warning-tint);
+}
+
+/* The direction chip of an endpoint (§6.4). */
+.direction-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 20px;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-badge);
+  border: var(--border-hairline) solid var(--border-strong);
+  font: var(--text-caption);
+  white-space: nowrap;
+}
+
+.direction-chip--c2s {
+  background: var(--dir-c2s);
+  border-style: solid;
+}
+
+.direction-chip--s2c {
+  background: var(--dir-s2c);
+  border-style: dashed;
+}
+
+/* A switch with a label (§6.3). */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  cursor: pointer;
+}
+
+.switch__input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.switch__label {
+  color: var(--text-secondary);
+  font: var(--text-caption);
+  white-space: nowrap;
+}
+
+/* The check box of the download dialog (§6.8). */
+.dialog__check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  margin-top: var(--space-16);
+  color: var(--text-primary);
+  font: var(--text-body);
+}
+
+.dialog__check input {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--critical);
+}
+
+/* The tags under the name of a file (§6.2, §6.3). */
+.artifact-cell__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.artifact-cell__endpoints {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
 /* ---------------------------------------------------------------- tooltips */
 .tooltip-wrap {
   position: relative;

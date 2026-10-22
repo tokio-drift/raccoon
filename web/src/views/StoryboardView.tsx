@@ -619,6 +619,7 @@ export function StoryboardView({
           findings={events.filter((event) => isFindingEvent(event))}
           supportedTitles={titlesByEvent}
           eventsById={eventsById}
+          captureStart={storyboard.captureStart}
           onSelectEvent={select}
           onOpenStream={onOpenStream}
           onOpenFile={onOpenFile}

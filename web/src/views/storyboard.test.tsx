@@ -70,9 +70,26 @@ function makeApi(events: CaseEvent[], files: CarvedFile[] = []) {
   return { api, listEvents, listFiles }
 }
 
-function paneTitle(): string {
+/**
+ * The detail pane. The pane is empty until the selection is applied, so the
+ * heading of the selected event is awaited: the list can be on the screen
+ * before the selection has reached the pane.
+ */
+async function selectedPane(): Promise<HTMLElement> {
   const pane = screen.getByRole('complementary', { name: 'Event details' })
-  return within(pane).getByRole('heading', { level: 2 }).textContent ?? ''
+  await within(pane).findByRole('heading', { level: 2 })
+  return pane
+}
+
+/**
+ * The title of the pane. The pane is empty until the selection is applied, so
+ * the heading is awaited: the list can be on the screen before the selection
+ * has reached the pane.
+ */
+async function paneTitle(): Promise<string> {
+  const pane = await selectedPane()
+  const heading = await within(pane).findByRole('heading', { level: 2 })
+  return heading.textContent ?? ''
 }
 
 function renderView(
@@ -117,7 +134,7 @@ describe('the storyboard view', () => {
     const { api } = makeApi([event(1, { severity: 'info' }), event(2, { severity: 'critical' })])
     renderView(api)
     await waitFor(() => expect(screen.getAllByText('Event 2').length).toBeGreaterThan(0))
-    expect(paneTitle()).toBe('Event 2')
+    expect(await paneTitle()).toBe('Event 2')
   })
 
   it('shows the severity with a label and an icon, never with colour alone', async () => {
@@ -143,7 +160,7 @@ describe('the storyboard view', () => {
     )
     renderView(api)
     await waitFor(() => expect(screen.getAllByText('Event 1').length).toBeGreaterThan(0))
-    const pane = screen.getByRole('complementary', { name: 'Event details' })
+    const pane = await selectedPane()
     const headings = within(pane)
       .getAllByRole('heading', { level: 3 })
       .map((heading) => heading.textContent)
@@ -156,11 +173,56 @@ describe('the storyboard view', () => {
     ])
   })
 
+  it('shows the elapsed time from the start of the capture', async () => {
+    const user = userEvent.setup()
+    const { api } = makeApi([event(1), event(2)])
+    renderView(api)
+    await waitFor(() => expect(screen.getAllByText('Event 1').length).toBeGreaterThan(0))
+    const pane = await selectedPane()
+    // The capture starts at the first event, so its elapsed time is zero.
+    expect(within(pane).getByText(/^\+00:00\.000/)).toBeInTheDocument()
+    await user.keyboard('{ArrowDown}')
+    expect(within(pane).getByText(/^\+00:01\.000/)).toBeInTheDocument()
+  })
+
+  it('shows the technique of a finding as a chip', async () => {
+    const { api } = makeApi([
+      event(1, {
+        type: 'FINDING',
+        title: 'Brute force',
+        details: { technique: 'T1110', techniqueName: 'Brute Force' },
+      }),
+    ])
+    renderView(api)
+    await waitFor(async () => expect(await paneTitle()).toBe('Brute force'))
+    const pane = await selectedPane()
+    const chip = within(pane).getByText('T1110 Brute Force')
+    expect(chip).toBeInTheDocument()
+    expect(chip).toHaveAttribute('title', 'Brute Force')
+  })
+
+  it('lists the supporting events of a finding in the evidence section', async () => {
+    const { api } = makeApi([
+      event(1, { type: 'FINDING', title: 'Brute force', details: { evidenceIds: [2, 3] } }),
+      event(2, { title: 'Login failed' }),
+      event(3, { title: 'Login failed twice' }),
+    ])
+    renderView(api)
+    await waitFor(async () => expect(await paneTitle()).toBe('Brute force'))
+    const pane = await selectedPane()
+    const headings = within(pane)
+      .getAllByRole('heading', { level: 3 })
+      .map((heading) => heading.textContent)
+    expect(headings.filter((title) => title === 'Evidence')).toHaveLength(1)
+    expect(within(pane).getByRole('button', { name: /Event 2: Login failed/ })).toBeInTheDocument()
+    expect(within(pane).getByRole('button', { name: /Event 3: Login failed twice/ })).toBeInTheDocument()
+  })
+
   it('shows the related file with its verdict and a way to open it', async () => {
     const { api } = makeApi([event(1, { fileId: 7 })], [carvedFile(7)])
     renderView(api)
     await waitFor(() => expect(screen.getAllByText('Event 1').length).toBeGreaterThan(0))
-    const pane = screen.getByRole('complementary', { name: 'Event details' })
+    const pane = await selectedPane()
     expect(within(pane).getByText('secret.png')).toBeInTheDocument()
     expect(within(pane).getByText('Malicious')).toBeInTheDocument()
     expect(within(pane).getByRole('button', { name: 'Open file' })).toBeInTheDocument()
@@ -170,7 +232,7 @@ describe('the storyboard view', () => {
     const { api } = makeApi([event(1, { packetNo: 42, packetEnd: 44, streamId: 3 })])
     renderView(api)
     await waitFor(() => expect(screen.getAllByText('Event 1').length).toBeGreaterThan(0))
-    const pane = screen.getByRole('complementary', { name: 'Event details' })
+    const pane = await selectedPane()
     expect(within(pane).getByRole('button', { name: /pkts 42/ })).toBeInTheDocument()
     expect(within(pane).getByRole('button', { name: /Stream 3/ })).toBeInTheDocument()
   })
@@ -180,7 +242,7 @@ describe('the storyboard view', () => {
     const { api } = makeApi([event(1, { packetNo: 42, packetEnd: 44, streamId: 3 })])
     renderView(api)
     await waitFor(() => expect(screen.getAllByText('Event 1').length).toBeGreaterThan(0))
-    const pane = screen.getByRole('complementary', { name: 'Event details' })
+    const pane = await selectedPane()
     await user.click(within(pane).getByRole('button', { name: /pkts 42/ }))
     expect(window.location.pathname).toBe(`/case/${CASE_ID}/streams`)
     expect(window.location.search).toContain('stream=3')
@@ -256,11 +318,11 @@ describe('the storyboard view', () => {
     renderView(api)
     await waitFor(() => expect(screen.getAllByText('Event 1').length).toBeGreaterThan(0))
     await user.keyboard('{ArrowDown}')
-    expect(paneTitle()).toBe('Event 2')
+    expect(await paneTitle()).toBe('Event 2')
     await user.keyboard('j')
-    expect(paneTitle()).toBe('Event 3')
+    expect(await paneTitle()).toBe('Event 3')
     await user.keyboard('k')
-    expect(paneTitle()).toBe('Event 2')
+    expect(await paneTitle()).toBe('Event 2')
   })
 
   it('moves the focus into the detail pane with Enter and back with Escape', async () => {
@@ -268,7 +330,7 @@ describe('the storyboard view', () => {
     const { api } = makeApi([event(1)])
     renderView(api)
     await waitFor(() => expect(screen.getAllByText('Event 1').length).toBeGreaterThan(0))
-    const pane = screen.getByRole('complementary', { name: 'Event details' })
+    const pane = await selectedPane()
     await user.keyboard('{Enter}')
     expect(pane).toHaveFocus()
     await user.keyboard('{Escape}')
@@ -294,11 +356,11 @@ describe('the storyboard view', () => {
     renderView(api)
     await waitFor(() => expect(screen.getAllByText('Event 1').length).toBeGreaterThan(0))
     // The first critical event is selected when the view opens.
-    expect(paneTitle()).toBe('Event 2')
+    expect(await paneTitle()).toBe('Event 2')
     await user.keyboard(']')
-    expect(paneTitle()).toBe('Event 3')
+    expect(await paneTitle()).toBe('Event 3')
     fireEvent.keyDown(document.body, { key: '[' })
-    await waitFor(() => expect(paneTitle()).toBe('Event 2'))
+    await waitFor(async () => expect(await paneTitle()).toBe('Event 2'))
   })
 
   it('renders a capture of five thousand events without rendering every card', async () => {

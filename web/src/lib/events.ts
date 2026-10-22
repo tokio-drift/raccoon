@@ -180,11 +180,23 @@ export function isFindingEvent(event: CaseEvent): boolean {
 
 /** The technique of a finding, for example "T1110 Brute Force" (§9.4). */
 export function findingTechnique(event: CaseEvent): string | null {
+  const parts = findingTechniqueParts(event)
+  if (!parts) return null
+  return parts.name ? `${parts.id} ${parts.name}` : parts.id
+}
+
+/**
+ * The technique of a finding, split into its id and its name (§9.4). The chip
+ * shows both; the tooltip carries the name.
+ */
+export function findingTechniqueParts(
+  event: CaseEvent,
+): { id: string; name: string | null } | null {
   const details = event.details ?? {}
   const value = details.technique ?? details.attackTechnique ?? details.mitreTechnique
   if (typeof value !== 'string' || value.length === 0) return null
   const name = typeof details.techniqueName === 'string' ? details.techniqueName : null
-  return name ? `${value} ${name}` : value
+  return { id: value, name }
 }
 
 /** The ids of the supporting events of a finding (§9.4). */

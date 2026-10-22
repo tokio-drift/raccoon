@@ -2,6 +2,7 @@ import type { JSX } from 'react'
 
 import type { Confidence, Severity, VerdictStatus } from '../../api/types'
 import { Icon } from '../../assets/icons'
+import { formatClock, formatRelativeTime, parseTimestamp } from '../../lib/format'
 import { Tooltip } from '../primitives/Tooltip'
 
 export type { Confidence, Severity, VerdictStatus }
@@ -59,6 +60,8 @@ export interface VerdictBadgeProps {
   total?: number
   /** The source of the verdict, shown as the sub-line. */
   source?: string
+  /** The time of the check, shown in the tooltip (§6.6). */
+  checkedAt?: string
   /** The check is running. */
   pending?: boolean
   /** The badge pulses while the verdict is updated. */
@@ -99,6 +102,7 @@ export function VerdictBadge({
   score,
   total,
   source,
+  checkedAt,
   pending = false,
   updating = false,
 }: VerdictBadgeProps): JSX.Element {
@@ -107,9 +111,13 @@ export function VerdictBadge({
   if (status === 'malicious' && score !== undefined && total !== undefined) {
     parts[0] = `Threat intelligence marks this file as malicious. ${score} of ${total} sources flagged it. Do not open it.`
   }
+  const checked = checkedAt ? parseTimestamp(checkedAt) : 0
+  const sourceLine = source
+    ? `Source: ${source}${checked ? ` · Checked ${formatClock(checked, { basis: 'utc', seconds: true })} UTC (${formatRelativeTime(checked)})` : ''}`
+    : null
   const tooltip = [
     parts[0],
-    source ? `Source: ${source}` : null,
+    sourceLine,
     "Only the file's hash is sent for checking. The file itself is never uploaded.",
   ]
     .filter(Boolean)
