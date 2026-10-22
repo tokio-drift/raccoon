@@ -14,7 +14,7 @@ import { useCaseSummary } from './hooks/useCaseSummary'
 import { useNow } from './hooks/useNow'
 import { useUpload } from './hooks/useUpload'
 import { usePreferences } from './lib/preferences'
-import { useRoute, type CaseTab } from './lib/router'
+import { useRoute, type CaseTab, type URLParams } from './lib/router'
 import { buildTitle, useDocumentTitle, useFavicon } from './lib/title'
 import { captureTokenFromLocation } from './lib/token'
 import { formatClock, formatCount, formatDuration, formatPercent, formatZoneLabel } from './lib/format'
@@ -287,6 +287,27 @@ export function App({ api }: AppProps): JSX.Element {
     navigate(`/case/${encodeURIComponent(caseId)}/files`)
   }, [caseId, navigate])
 
+  // The filters of the storyboard live in the URL (§3.2). The event the reader
+  // has selected is kept, because the filter bar does not own it.
+  const onStoryboardParams = useCallback(
+    (params: URLParams) => {
+      if (!caseId) return
+      const merged: URLParams = { ...params }
+      const current = route.kind === 'case' ? route.params.event : undefined
+      if (current && !merged.event) merged.event = current
+      const search = new URLSearchParams()
+      for (const [key, value] of Object.entries(merged)) {
+        if (value) search.set(key, value)
+      }
+      const query = search.toString()
+      const next = `/case/${encodeURIComponent(caseId)}/storyboard${query ? `?${query}` : ''}`
+      const here = `${window.location.pathname}${window.location.search}`
+      if (next === here) return
+      navigate(next, { replace: true })
+    },
+    [caseId, navigate, route],
+  )
+
   // The diagnostic text never holds the session token (UI_Design.md §8.5).
   const copyDiagnostics = useCallback(() => {
     const text = buildDiagnostics({
@@ -467,7 +488,7 @@ export function App({ api }: AppProps): JSX.Element {
         </p>
         {caseMissing ? (
           <FullPageUnknown onGoHome={() => navigate('/')} />
-        ) : running ? (
+        ) : running && !timelineReady ? (
           <ProcessingView
             caseSummary={caseSummary}
             counters={counters}
@@ -493,15 +514,10 @@ export function App({ api }: AppProps): JSX.Element {
             api={client}
             totalEvents={caseSummary?.events ?? events.ready?.events ?? null}
             params={route.kind === 'case' ? route.params : {}}
-            onParamsChange={(params) => {
-              if (!caseId) return
-              const search = new URLSearchParams()
-              for (const [key, value] of Object.entries(params)) {
-                if (value) search.set(key, value)
-              }
-              navigate(`/case/${encodeURIComponent(caseId)}/storyboard${search.toString() ? `?${search.toString()}` : ''}`, { replace: true })
-            }}
+            onParamsChange={onStoryboardParams}
             onOpenStreams={() => caseId && navigate(`/case/${encodeURIComponent(caseId)}/streams`)}
+            headingRef={storyboardHeading}
+            partial={running}
           />
         )}
       </main>

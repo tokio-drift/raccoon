@@ -15,6 +15,9 @@ import type { StoryboardFilters } from '../lib/storyboard'
  * result count is a live region.
  */
 
+/** The time the search field waits before it filters the list. */
+export const SEARCH_DEBOUNCE_MS = 250
+
 const SEVERITY_OPTIONS: SelectOption[] = [
   { value: 'critical', label: SEVERITY_LABEL.critical, icon: 'critical' },
   { value: 'warning', label: SEVERITY_LABEL.warning, icon: 'warning' },
@@ -49,6 +52,10 @@ export interface StoryboardFilterBarProps {
   onNextCritical: () => void
   /** True when a critical event exists to jump to. */
   canJumpCritical: boolean
+  onPreviousWarning: () => void
+  onNextWarning: () => void
+  /** True when a warning event exists to jump to. */
+  canJumpWarning: boolean
   /** The reference of the search field; "/" focuses it. */
   searchRef?: RefObject<HTMLInputElement>
 }
@@ -65,10 +72,29 @@ export function StoryboardFilterBar({
   onPreviousCritical,
   onNextCritical,
   canJumpCritical,
+  onPreviousWarning,
+  onNextWarning,
+  canJumpWarning,
   searchRef,
 }: StoryboardFilterBarProps): JSX.Element {
   const [moreOpen, setMoreOpen] = useState(false)
   const more = useRef<HTMLDivElement | null>(null)
+
+  // The search field waits 250 ms before it filters, so a long word does not
+  // filter the list once per keystroke (§5.15).
+  const [query, setQuery] = useState(filters.query)
+  const dirtyQuery = useRef(false)
+  useEffect(() => {
+    if (!dirtyQuery.current) setQuery(filters.query)
+  }, [filters.query])
+  useEffect(() => {
+    if (query === filters.query) return
+    const timer = window.setTimeout(() => {
+      dirtyQuery.current = false
+      onChange({ ...filters, query })
+    }, SEARCH_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [query, filters, onChange])
 
   useEffect(() => {
     if (!moreOpen) return
@@ -110,8 +136,11 @@ export function StoryboardFilterBar({
           <SearchField
             label="Search events"
             placeholder="Search events"
-            value={filters.query}
-            onChange={(query) => onChange({ ...filters, query })}
+            value={query}
+            onChange={(value) => {
+              dirtyQuery.current = true
+              setQuery(value)
+            }}
             inputRef={searchRef}
           />
         </div>
@@ -196,6 +225,24 @@ export function StoryboardFilterBar({
             aria-label="Next critical event"
             disabled={!canJumpCritical}
             onClick={onNextCritical}
+          >
+            <Icon name="chevron-down" size={16} />
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Previous warning event"
+            disabled={!canJumpWarning}
+            onClick={onPreviousWarning}
+          >
+            <Icon name="chevron-up" size={16} />
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label="Next warning event"
+            disabled={!canJumpWarning}
+            onClick={onNextWarning}
           >
             <Icon name="chevron-down" size={16} />
           </button>

@@ -56,6 +56,11 @@ function stubFetch(handler: (url: string) => Response | Promise<Response>) {
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input)
       if (url.includes('/events/stream')) return sseResponse()
+      if (url.includes('/events') && !url.includes('/events/stream')) {
+        return jsonResponse({ items: [], nextCursor: null })
+      }
+      if (url.includes('/files')) return jsonResponse({ items: [], nextCursor: null })
+      if (url.includes('/streams')) return jsonResponse({ items: [], nextCursor: null })
       return handler(url)
     }),
   )
@@ -112,6 +117,76 @@ describe('app shell', () => {
     expect(within(tabs).getByRole('tab', { name: /Files/ })).toBeInTheDocument()
     expect(within(tabs).getByRole('tab', { name: /Streams/ })).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('Ready')
+  })
+
+  it('shows the storyboard of the case', async () => {
+    window.history.replaceState({}, '', '/case/20260101-120000-abcdef/storyboard')
+    stubFetch(() => jsonResponse(READY_CASE))
+    render(<App />)
+
+    expect(await screen.findByRole('region', { name: 'Storyboard' })).toBeInTheDocument()
+    expect(screen.getByText('No events in this capture')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open Streams' })).toBeInTheDocument()
+  })
+
+  it('selects the event of a deep link', async () => {
+    window.history.replaceState({}, '', '/case/20260101-120000-abcdef/storyboard?event=2')
+    const events = [
+      {
+        id: 1,
+        ts: '2026-01-01T12:00:01.000000000Z',
+        packetNo: 1,
+        packetEnd: 1,
+        type: 'FTP_LOGIN_FAILED',
+        severity: 'warning',
+        phase: 'access',
+        streamId: 1,
+        src: '192.0.2.14:51822',
+        dst: '192.0.2.50:21',
+        proto: 'ftp',
+        title: 'FTP login failed',
+        details: {},
+        explain: '',
+        parentId: 0,
+        fileId: 0,
+        findingIds: [],
+      },
+      {
+        id: 2,
+        ts: '2026-01-01T12:00:02.000000000Z',
+        packetNo: 2,
+        packetEnd: 2,
+        type: 'HTTP_TRANSACTION',
+        severity: 'critical',
+        phase: 'exfil',
+        streamId: 1,
+        src: '192.0.2.14:51822',
+        dst: '192.0.2.50:80',
+        proto: 'http',
+        title: 'GET /secret',
+        details: {},
+        explain: '',
+        parentId: 0,
+        fileId: 0,
+        findingIds: [],
+      },
+    ]
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.includes('/events/stream')) return sseResponse()
+        if (url.includes('/events')) return jsonResponse({ items: events, nextCursor: null })
+        if (url.includes('/files') || url.includes('/streams')) {
+          return jsonResponse({ items: [], nextCursor: null })
+        }
+        return jsonResponse(READY_CASE)
+      }),
+    )
+    render(<App />)
+
+    const pane = await screen.findByRole('complementary', { name: 'Event details' })
+    await waitFor(() => expect(within(pane).getByRole('heading', { name: 'GET /secret' })).toBeInTheDocument())
   })
 
   it('never offers the reserved graph tab', async () => {

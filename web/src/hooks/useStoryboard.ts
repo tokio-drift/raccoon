@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RaccoonApi } from '../api/api'
 import { ApiError } from '../api/client'
 import type { CarvedFile, CaseEvent, Severity, VerdictStatus } from '../api/types'
-import { eventSearchText, isFindingEvent } from '../lib/events'
+import { eventSearchText, eventSeverity, isFindingEvent } from '../lib/events'
 import {
   buildRows,
   filterEvents,
@@ -91,12 +91,16 @@ export function useStoryboard(options: UseStoryboardOptions): UseStoryboard {
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<number[]>([])
   const restored = useRef(false)
+  const dirty = useRef(false)
+  const chosen = useRef(false)
 
   const storageKey = `raccoon.storyboard.${caseId}`
 
   // The selection and the open groups are remembered per case.
   useEffect(() => {
     restored.current = false
+    dirty.current = false
+    chosen.current = false
     setSelectedId(null)
     setExpandedGroups([])
     try {
@@ -113,7 +117,7 @@ export function useStoryboard(options: UseStoryboardOptions): UseStoryboard {
   }, [storageKey])
 
   useEffect(() => {
-    if (!restored.current) return
+    if (!restored.current || !dirty.current) return
     try {
       window.localStorage.setItem(
         storageKey,
@@ -124,9 +128,11 @@ export function useStoryboard(options: UseStoryboardOptions): UseStoryboard {
     }
   }, [selectedId, expandedGroups, storageKey])
 
-  // The deep link selects an event when the view opens.
+  // The deep link selects an event when the view opens (§3.2). It does not
+  // change the remembered selection: the link is a visit, not a choice.
   useEffect(() => {
     if (initialEventId === null) return
+    chosen.current = true
     setSelectedId(initialEventId)
   }, [initialEventId])
 
@@ -176,8 +182,13 @@ export function useStoryboard(options: UseStoryboardOptions): UseStoryboard {
   )
 
   const rows = useMemo(
-    () => buildRows(filtered, { expandedGroups: new Set(expandedGroups), basis }),
-    [filtered, expandedGroups, basis],
+    () =>
+      buildRows(filtered, {
+        expandedGroups: new Set(expandedGroups),
+        basis,
+        allEvents: events,
+      }),
+    [filtered, events, expandedGroups, basis],
   )
 
   const setFilters = useCallback(
@@ -185,9 +196,13 @@ export function useStoryboard(options: UseStoryboardOptions): UseStoryboard {
     [onFiltersChange],
   )
 
-  const select = useCallback((id: number | null) => setSelectedId(id), [])
+  const select = useCallback((id: number | null) => {
+    dirty.current = true
+    setSelectedId(id)
+  }, [])
 
   const toggleGroup = useCallback((id: number) => {
+    dirty.current = true
     setExpandedGroups((current) =>
       current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
     )
@@ -207,6 +222,17 @@ export function useStoryboard(options: UseStoryboardOptions): UseStoryboard {
   )
   const captureStart = timed.length > 0 ? timed[0] : 0
   const duration = timed.length > 0 ? timed[timed.length - 1] - timed[0] : 0
+
+  // A case that is opened without a remembered selection starts at the first
+  // critical event, or at the first event when there is none (§3.4).
+  useEffect(() => {
+    if (chosen.current) return
+    if (loading || events.length === 0) return
+    chosen.current = true
+    if (selectedId !== null) return
+    const critical = events.find((event) => eventSeverity(event) === 'critical')
+    setSelectedId((critical ?? events[0]).id)
+  }, [events, loading, selectedId])
 
   const counts = useMemo(() => severityCounts(events), [events])
   const verdictCounts = useMemo(() => {

@@ -64,7 +64,9 @@ export function EventCard({
   if (selected) classes.push('event-card--selected')
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === ' ' || event.key === 'Enter') {
+    // Space expands the card. Enter moves the focus into the detail pane
+    // (§5.17), so the list never handles it.
+    if (event.key === ' ') {
       event.preventDefault()
       onToggle?.()
     }

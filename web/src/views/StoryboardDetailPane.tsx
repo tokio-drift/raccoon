@@ -1,6 +1,6 @@
-import { useState, type JSX } from 'react'
+import { useState, type JSX, type RefObject } from 'react'
 
-import type { CaseEvent } from '../api/types'
+import type { CarvedFile, CaseEvent } from '../api/types'
 import type { DetailBlock, DetailValue } from '../lib/details'
 
 
@@ -19,10 +19,16 @@ export interface StoryboardDetailPaneProps {
   supportedTitles: Map<number, string>
   /** The events the user can jump to from the links. */
   eventsById: Map<number, CaseEvent>
+  /** The file the event belongs to, when the case has one. */
+  relatedFile?: CarvedFile | null
+  /** The children of the selected event. */
+  children?: CaseEvent[]
   onSelectEvent: (id: number) => void
   onOpenStream?: (streamId: number, packetNo: number) => void
   onOpenFile?: (fileId: number) => void
   onClose?: () => void
+  /** The reference of the pane, so the keyboard can move the focus into it. */
+  paneRef?: RefObject<HTMLElement>
 }
 
 export function StoryboardDetailPane({
@@ -31,14 +37,20 @@ export function StoryboardDetailPane({
   findings,
   supportedTitles,
   eventsById,
+  relatedFile,
+  children,
   onSelectEvent,
   onOpenStream,
   onOpenFile,
   onClose,
+  paneRef,
 }: StoryboardDetailPaneProps): JSX.Element {
+  const [fullTitleOpen, setFullTitle] = useState(false)
+  const pane = paneRef
+
   if (!event) {
     return (
-      <aside className="storyboard-detail" aria-label="Event details">
+      <aside className="storyboard-detail" aria-label="Event details" ref={pane}>
         <p className="storyboard-detail__empty">Select an event to see its details.</p>
       </aside>
     )
@@ -46,6 +58,8 @@ export function StoryboardDetailPane({
 
   const typeLabel = event.type.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
   const isUnknownType = !KNOWN_DETAIL_TYPES.has(event.type)
+  // A long title is cut to four lines; the reader can ask for all of it.
+  const longTitle = (event.title ?? '').length > 120
   const detailView = buildDetailView(event)
   const tags = uncertaintyTags(event)
   const inFindings = (event.findingIds ?? [])
@@ -53,7 +67,7 @@ export function StoryboardDetailPane({
     .filter((f): f is CaseEvent => Boolean(f))
 
   return (
-    <aside className="storyboard-detail" aria-label="Event details" tabIndex={-1}>
+    <aside className="storyboard-detail" aria-label="Event details" tabIndex={-1} ref={paneRef}>
       <header className="storyboard-detail__header">
         <div className="storyboard-detail__header-row">
           <SeverityBadge severity={eventSeverity(event)} />
@@ -71,6 +85,15 @@ export function StoryboardDetailPane({
           ) : null}
         </div>
         <h2 className="storyboard-detail__title">{event.title || 'Untitled event'}</h2>
+        {longTitle ? (
+          <button
+            type="button"
+            className="button button--tertiary storyboard-detail__full-title"
+            onClick={() => setFullTitle((value) => !value)}
+          >
+            {fullTitleOpen ? 'Show less' : 'Show full title'}
+          </button>
+        ) : null}
         <p className="storyboard-detail__time">
           {`${formatElapsed(parseTimestamp(event.ts) - 0)} · ${formatClock(parseTimestamp(event.ts), { micro: true })}`}
         </p>
@@ -146,6 +169,37 @@ export function StoryboardDetailPane({
           )}
         </DetailSection>
 
+        {relatedFile ? (
+          <DetailSection title="Related file">
+            <div className="storyboard-detail__file">
+              <div className="storyboard-detail__file-head">
+                <span className="storyboard-detail__file-name">
+                  {relatedFile.displayName || relatedFile.path || `File ${relatedFile.id}`}
+                </span>
+                {relatedFile.format ? (
+                  <span className="tag tag--plain">{relatedFile.format}</span>
+                ) : null}
+                {relatedFile.verdict ? (
+                  <VerdictBadge
+                    status={relatedFile.verdict.status}
+                    score={relatedFile.verdict.score}
+                    total={relatedFile.verdict.total}
+                    source={relatedFile.verdict.source}
+                  />
+                ) : (
+                  <span className="tag tag--uncertain">Not checked</span>
+                )}
+              </div>
+              <p className="storyboard-detail__muted">
+                {`${formatBytes(relatedFile.size)} · ${relatedFile.confidence} confidence`}
+              </p>
+              <Button variant="secondary" onClick={() => onOpenFile?.(relatedFile.id)}>
+                Open file
+              </Button>
+            </div>
+          </DetailSection>
+        ) : null}
+
         {inFindings.length > 0 ? (
           <DetailSection title="Related findings">
             <ul className="storyboard-detail__list">
@@ -207,6 +261,25 @@ export function StoryboardDetailPane({
           </DetailSection>
         ) : null}
 
+        {children && children.length > 0 ? (
+          <DetailSection title="Contains">
+            <ul className="storyboard-detail__list">
+              {children.map((child) => (
+                <li key={child.id}>
+                  <button
+                    type="button"
+                    className="storyboard-detail__link"
+                    onClick={() => onSelectEvent(child.id)}
+                  >
+                    <SeverityBadge severity={eventSeverity(child)} />
+                    <span>{child.title || eventTypeLabel(child.type)}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </DetailSection>
+        ) : null}
+
         {detailView.other.length > 0 ? (
           <DetailSection title="Other details" defaultCollapsed={detailView.other.length > 8} sectionKey={`other-${event.id}`}>
             <table className="storyboard-detail__table">
@@ -215,7 +288,11 @@ export function StoryboardDetailPane({
                   <tr key={entry.label}>
                     <th scope="row">{entry.label}</th>
                     <td>
-                      <DetailValueView value={entry.value} masked={entry.masked} />
+                      <DetailValueView
+                        value={entry.value}
+                        masked={entry.masked}
+                        maskLabel={entry.masked ? entry.label.toLowerCase() : undefined}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -259,7 +336,11 @@ function DetailBlockView({ block }: { block: DetailBlock }): JSX.Element {
             <tr key={entry.label}>
               <th scope="row">{entry.label}</th>
               <td>
-                <DetailValueView value={entry.value} masked={entry.masked} />
+                <DetailValueView
+                  value={entry.value}
+                  masked={entry.masked}
+                  maskLabel={entry.masked ? entry.label.toLowerCase() : undefined}
+                />
               </td>
             </tr>
           ))}
@@ -273,11 +354,16 @@ function DetailBlockView({ block }: { block: DetailBlock }): JSX.Element {
 function DetailValueView({
   value,
   masked,
+  maskLabel,
 }: {
   value: DetailValue
   masked?: boolean
+  /** The name of the hidden value, for the reveal button (§12.7). */
+  maskLabel?: string
 }): JSX.Element {
   const [revealed, setRevealed] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [rawShown, setRawShown] = useState(false)
   if (masked) {
     return (
       <span className="storyboard-detail__masked">
@@ -287,7 +373,7 @@ function DetailValueView({
           className="button button--tertiary"
           onClick={() => setRevealed((state) => !state)}
         >
-          {revealed ? 'Hide' : 'Show'}
+          {revealed ? `Hide ${maskLabel ?? 'value'}` : `Show ${maskLabel ?? 'value'}`}
         </button>
       </span>
     )
@@ -296,16 +382,45 @@ function DetailValueView({
     return <span className="storyboard-detail__value">{value.text}</span>
   }
   if (value.kind === 'code') {
-    return <pre className="storyboard-detail__code">{value.text}</pre>
+    // A long value is shown in a scrolling block; the reader can open all of
+    // it and copy it (§5.8).
+    return (
+      <div className="storyboard-detail__code-block">
+        <pre className={expanded ? 'storyboard-detail__code storyboard-detail__code--full' : 'storyboard-detail__code'}>
+          {value.text}
+        </pre>
+        <div className="storyboard-detail__code-actions">
+          <button
+            type="button"
+            className="button button--tertiary"
+            onClick={() => setExpanded((state) => !state)}
+          >
+            {expanded ? 'Show less' : 'Show all'}
+          </button>
+          <CopyButton value={value.text} label="Copy value" showLabel />
+        </div>
+      </div>
+    )
   }
   if (value.kind === 'list') {
+    const shown = expanded ? value.items : value.items.slice(0, MAX_LIST_ITEMS)
     return (
-      <ul className="storyboard-detail__value-list">
-        {value.items.map((item, index) => (
-          <li key={index}>{item}</li>
-        ))}
-        {value.overflow > 0 ? <li>{`+${value.overflow} more`}</li> : null}
-      </ul>
+      <div className="storyboard-detail__list-block">
+        <ul className="storyboard-detail__value-list">
+          {shown.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+        {value.overflow > 0 ? (
+          <button
+            type="button"
+            className="button button--tertiary"
+            onClick={() => setExpanded((state) => !state)}
+          >
+            {expanded ? 'Show fewer' : `Show all ${value.items.length}`}
+          </button>
+        ) : null}
+      </div>
     )
   }
   if (value.kind === 'object') {
@@ -322,14 +437,20 @@ function DetailValueView({
   }
   return (
     <span className="storyboard-detail__unreadable">
-      Couldn&apos;t read this value.
-      <button
-        type="button"
-        className="button button--tertiary"
-        onClick={() => alert(value.raw)}
-      >
-        Show raw
-      </button>
+      {rawShown ? (
+        <code className="storyboard-detail__raw">{value.raw}</code>
+      ) : (
+        <>
+          Couldn&apos;t read this value.
+          <button
+            type="button"
+            className="button button--tertiary"
+            onClick={() => setRawShown(true)}
+          >
+            Show raw
+          </button>
+        </>
+      )}
     </span>
   )
 }
@@ -360,9 +481,19 @@ const KNOWN_DETAIL_TYPES = new Set([
 ])
 
 import { Icon } from '../assets/icons'
-import { SeverityBadge } from '../components/content/Badges'
+import { SeverityBadge, VerdictBadge } from '../components/content/Badges'
+import { Button } from '../components/primitives/Button'
+import { CopyButton } from '../components/primitives/CopyButton'
 import { DetailSection } from '../components/content/DetailSection'
 import { EvidenceChip } from '../components/content/EvidenceChip'
-import { buildDetailView } from '../lib/details'
-import { eventSeverity, findingEventIds, isFindingEvent, endpointsLabel, packetRangeLabel, uncertaintyTags } from '../lib/events'
-import { formatClock, formatElapsed, parseTimestamp } from '../lib/format'
+import { buildDetailView, MAX_LIST_ITEMS } from '../lib/details'
+import {
+  eventSeverity,
+  findingEventIds,
+  isFindingEvent,
+  endpointsLabel,
+  packetRangeLabel,
+  uncertaintyTags,
+  typeLabel as eventTypeLabel,
+} from '../lib/events'
+import { formatBytes, formatClock, formatElapsed, parseTimestamp } from '../lib/format'

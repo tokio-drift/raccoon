@@ -645,6 +645,103 @@
   color: var(--text-muted);
 }
 
+/* The jump controls of the list (§5.16). */
+.storyboard-jump {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-8) var(--space-12);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+  flex: 0 0 auto;
+}
+
+.storyboard-jump__field {
+  display: flex;
+}
+
+.storyboard-jump__input {
+  width: 120px;
+  height: 28px;
+  font: var(--text-mono-small);
+}
+
+.storyboard-jump__note {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--text-muted);
+  font: var(--text-caption);
+}
+
+/* The partial state (§5.18). */
+.storyboard__partial {
+  margin: 0;
+  padding: var(--space-8) var(--space-12);
+  background: var(--bg-sunken);
+  color: var(--text-secondary);
+  font: var(--text-caption);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* The related file of the detail pane (§5.8). */
+.storyboard-detail__file {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  align-items: flex-start;
+}
+
+.storyboard-detail__file-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+.storyboard-detail__file-name {
+  font: var(--text-mono-small);
+  word-break: break-word;
+}
+
+/* A long or hostile value (§5.8). */
+.storyboard-detail__code-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.storyboard-detail__code {
+  max-height: 160px;
+  overflow: auto;
+}
+
+.storyboard-detail__code--full {
+  max-height: none;
+}
+
+.storyboard-detail__code-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.storyboard-detail__list-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.storyboard-detail__raw {
+  font: var(--text-mono-small);
+  word-break: break-all;
+}
+
+.storyboard-detail__full-title {
+  align-self: flex-start;
+}
+
 .storyboard-card__finding {
   gap: var(--space-4);
 }

@@ -63,6 +63,8 @@ export interface StoryboardListProps {
   containerRef?: RefObject<HTMLDivElement>
   /** The id of the event that must be scrolled to. */
   scrollToId?: number | null
+  /** The id of the card that must take the focus. */
+  focusId?: number | null
   onOpenStream?: (streamId: number, packetNo: number) => void
   onOpenFile?: (fileId: number) => void
 }
@@ -82,6 +84,7 @@ export function StoryboardList({
   findingTitles,
   containerRef,
   scrollToId,
+  focusId,
   onOpenStream,
   onOpenFile,
 }: StoryboardListProps): JSX.Element {
@@ -137,18 +140,60 @@ export function StoryboardList({
     setScrollTop(element.scrollTop)
   }, [offsets, rows, scrollRef])
 
-  // The deep link scrolls to its event once the list is there.
+  // The deep link scrolls to its event once the list is there. It scrolls once
+  // per link: the list never moves under the reader (§5.14).
+  const scrolledTo = useRef<number | null>(null)
   useEffect(() => {
     if (scrollToId === null || scrollToId === undefined) return
+    if (scrolledTo.current === scrollToId) return
     const index = rows.findIndex(
       (row) => row.kind === 'event' && row.event.id === scrollToId,
     )
     if (index < 0) return
     const element = scrollRef.current
     if (!element) return
+    scrolledTo.current = scrollToId
     element.scrollTop = Math.max(0, offsets[index] - 80)
     setScrollTop(element.scrollTop)
   }, [scrollToId, rows, offsets, scrollRef])
+
+  // The selected card is brought into view when the selection moves, so the
+  // keyboard map of §5.17 ("next event: selects, scrolls into view") holds. A
+  // card that is already visible is never moved (§5.14).
+  useEffect(() => {
+    if (selectedId === null) return
+    const index = rows.findIndex((row) => row.kind === 'event' && row.event.id === selectedId)
+    if (index < 0) return
+    const element = scrollRef.current
+    if (!element) return
+    const top = offsets[index]
+    const bottom = top + (heights[index] ?? 72)
+    if (top < element.scrollTop) {
+      element.scrollTop = top
+    } else if (bottom > element.scrollTop + element.clientHeight) {
+      element.scrollTop = Math.max(0, bottom - element.clientHeight)
+    }
+    setScrollTop(element.scrollTop)
+  }, [selectedId, rows, offsets, heights, scrollRef])
+
+  // The card that must take the focus: it is scrolled into view first, so the
+  // reader sees where the focus went (§5.17).
+  const focused = useRef<number | null>(null)
+  useEffect(() => {
+    if (focusId === null || focusId === undefined) return
+    if (focused.current === focusId) return
+    const index = rows.findIndex(
+      (row) => row.kind === 'event' && row.event.id === focusId,
+    )
+    if (index < 0) return
+    const element = scrollRef.current
+    if (!element) return
+    focused.current = focusId
+    element.scrollTop = Math.max(0, offsets[index] - 80)
+    setScrollTop(element.scrollTop)
+    const card = element.querySelector<HTMLElement>(`[data-event-id="${focusId}"] [role="listitem"]`)
+    card?.focus()
+  }, [focusId, rows, offsets, scrollRef])
 
   const range = computeVirtualRange(offsets, heights, scrollTop, viewportHeight)
 
@@ -166,6 +211,7 @@ export function StoryboardList({
             <div
               key={row.key}
               className="storyboard-list__row"
+              data-event-id={'event' in row ? row.event.id : undefined}
               style={{ transform: `translateY(${top}px)` }}
             >
               <StoryboardRowView
@@ -257,16 +303,20 @@ function StoryboardRowView({
       first && last
         ? `${first.packetNo}–${last.packetEnd}`
         : undefined
+    // A group that lost children to the filters says how many are hidden
+    // (§5.6): the reader sees that the list is short on purpose.
+    const hidden = Math.max(0, row.total - children.length)
     return (
       <div className={row.depth > 0 ? 'storyboard-list__row storyboard-list__row--child' : 'storyboard-list__row'}>
         <GroupCard
           severity={severity}
           title={row.event.title || typeLabel(row.event.type)}
-          count={children.length}
+          count={row.total}
           subline={
             [
               `${children.length} events${span ? ` over ${span}` : ''}`,
               packets ? `pkts ${packets}` : null,
+              hidden > 0 ? `${children.length} of ${row.total} shown` : null,
             ]
               .filter(Boolean)
               .join(' · ')

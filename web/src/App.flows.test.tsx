@@ -315,7 +315,10 @@ describe('the completion of an analysis', () => {
 
     const banner = await screen.findByText(/Analysis finished in/)
     expect(banner).toBeInTheDocument()
-    const button = screen.getByRole('button', { name: 'Go to first critical event' })
+    // The storyboard has a button with the same name; the banner owns this one.
+    const button = within(banner.closest('.banner') as HTMLElement).getByRole('button', {
+      name: 'Go to first critical event',
+    })
     await userEvent.setup().click(button)
     await waitFor(() =>
       expect(window.location.pathname).toBe('/case/20260101-120000-abcdef/storyboard'),

@@ -107,22 +107,36 @@ export function describeValue(value: unknown, depth = 0): DetailValue {
     return { kind: 'text', text: String(value) }
   }
   if (Array.isArray(value)) {
-    const items = value.slice(0, MAX_LIST_ITEMS).map((item) => stringify(item))
-    return { kind: 'list', items, overflow: Math.max(0, value.length - MAX_LIST_ITEMS) }
+    // The whole list is kept: the pane shows the first ten and lets the
+    // reader open the rest (§5.12).
+    const items = value.map((item) => stringify(item))
+    return { kind: 'list', items, overflow: Math.max(0, items.length - MAX_LIST_ITEMS) }
   }
   if (typeof value === 'object') {
     if (depth >= MAX_NESTING_DEPTH) {
       return { kind: 'text', text: stringify(value) }
     }
-    const entries = Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, item]) => ({ label: key, value: describeValue(item, depth + 1) }))
-    return { kind: 'object', entries }
+    let entries: [string, unknown][]
+    try {
+      entries = Object.entries(value as Record<string, unknown>)
+    } catch {
+      // A value that cannot be read is shown as raw text, never as a crash.
+      return { kind: 'unreadable', raw: String(value) }
+    }
+    return {
+      kind: 'object',
+      entries: entries
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, item]) => ({ label: key, value: describeValue(item, depth + 1) })),
+    }
   }
   return { kind: 'unreadable', raw: String(value) }
 }
 
-/** The text of a raw value. */
+/**
+ * The text of a raw value. A value that cannot be serialised becomes its
+ * escaped form, so the pane always shows text and never a crash (§5.12).
+ */
 export function stringify(value: unknown): string {
   if (value === null || value === undefined) return ''
   if (typeof value === 'string') return value
@@ -130,7 +144,16 @@ export function stringify(value: unknown): string {
   try {
     return JSON.stringify(value) ?? String(value)
   } catch {
+    return escapeValue(value)
+  }
+}
+
+/** The escaped text of a value that cannot be serialised. */
+export function escapeValue(value: unknown): string {
+  try {
     return String(value)
+  } catch {
+    return '[unreadable value]'
   }
 }
 
