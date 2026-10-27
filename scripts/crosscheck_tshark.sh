@@ -27,7 +27,10 @@ fi
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [ -z "$bin" ]; then
-	bin="$root/raccoon"
+	bin="$root/bin/raccoon"
+	if [ ! -x "$bin" ]; then
+		bin="$root/raccoon"
+	fi
 	if [ ! -x "$bin" ]; then
 		tmp="$(mktemp -d)"
 		trap 'rm -rf "$tmp"' EXIT
@@ -36,15 +39,32 @@ if [ -z "$bin" ]; then
 	fi
 fi
 
+# In environments where AppArmor restricts tshark from reading user directories,
+# stage a temporary readable copy in /tmp for tshark.
+pcap_for_tshark="$pcap"
+tshark_tmp=""
+if ! tshark -r "$pcap" -c 1 >/dev/null 2>&1; then
+	tshark_tmp="$(mktemp /tmp/tshark_crosscheck_XXXXXX.pcap)"
+	cp "$pcap" "$tshark_tmp"
+	chmod 644 "$tshark_tmp"
+	pcap_for_tshark="$tshark_tmp"
+fi
+cleanup() {
+	if [ -n "$tshark_tmp" ] && [ -f "$tshark_tmp" ]; then
+		rm -f "$tshark_tmp"
+	fi
+}
+trap cleanup EXIT
+
 # List the distinct TCP stream indices tshark knows about.
-mapfile -t streams < <(tshark -r "$pcap" -T fields -e tcp.stream 2>/dev/null |
+mapfile -t streams < <(tshark -r "$pcap_for_tshark" -T fields -e tcp.stream 2>/dev/null |
 	sort -n | uniq -w 12 | sed '/^$/d' | tr -d '\r')
 
 if [ "${#streams[@]}" -eq 0 ]; then
-	if tshark -r "$pcap" -q -z conv,tcp >/dev/null 2>&1; then
+	if tshark -r "$pcap_for_tshark" -q -z conv,tcp >/dev/null 2>&1; then
 		# A capture may still host TCP conversations even when tcp.stream is
 		# unavailable to -T fields; fall back to the conv,tcp table count.
-		n="$(tshark -r "$pcap" -q -z conv,tcp 2>/dev/null | sed -n '/^[0-9]/p' | wc -l)"
+		n="$(tshark -r "$pcap_for_tshark" -q -z conv,tcp 2>/dev/null | sed -n '/^[0-9]/p' | wc -l)"
 		streams=($(seq 0 $((n - 1))))
 	else
 		echo "crosscheck_tshark: no TCP streams found in $pcap"
@@ -78,7 +98,7 @@ extract_hex() {
 
 fails=0
 for sidx in "${streams[@]}"; do
-	tshark_hex="$(tshark -r "$pcap" -q -z "follow,tcp,raw,$sidx" 2>&1 | extract_hex)"
+	tshark_hex="$(tshark -r "$pcap_for_tshark" -q -z "follow,tcp,raw,$sidx" 2>&1 | extract_hex)"
 	raccoon_hex="$("$bin" debug dump-stream --pcap "$pcap" --stream "$sidx" 2>&1 | extract_hex)"
 	if [ "$tshark_hex" != "$raccoon_hex" ]; then
 		echo "crosscheck_tshark: stream $sidx MISMATCH" >&2

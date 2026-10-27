@@ -185,16 +185,13 @@ func dumpStream(path string, index int64, dirArg string, out io.Writer) error {
 		}
 		sort.SliceStable(chunks, func(i, j int) bool {
 			a, b := &chunks[i], &chunks[j]
+			if a.seg.Dir == b.seg.Dir {
+				return a.seg.StreamOff < b.seg.StreamOff
+			}
 			if a.seg.PacketNo != b.seg.PacketNo {
 				return a.seg.PacketNo < b.seg.PacketNo
 			}
-			if a.seg.TS != b.seg.TS {
-				return a.seg.TS < b.seg.TS
-			}
-			if a.seg.Dir != b.seg.Dir {
-				return a.seg.Dir < b.seg.Dir
-			}
-			return a.seg.StreamOff < b.seg.StreamOff
+			return a.seg.TS < b.seg.TS
 		})
 		for _, ch := range chunks {
 			if err := copySegment(hw, st, ch.dir, ch.seg); err != nil {
