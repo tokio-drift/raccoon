@@ -23,7 +23,7 @@ This document records the performance benchmarks (PLAN 13.2) and memory budget v
 ## 2. 100 MB Analysis Benchmark (PLAN 13.2)
 
 ### Target
-- **Timeline ready in < 20 s.**
+- **Timeline  ready in < 20 s.**
 
 ### Results
 - **Command**: `raccoon analyze testdata/big/big_100mb.pcap --report json --offline`
