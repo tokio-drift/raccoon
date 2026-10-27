@@ -10,6 +10,7 @@ import (
 
 	"github.com/tokio-drift/raccoon/internal/limits"
 	"github.com/tokio-drift/raccoon/internal/model"
+	"github.com/tokio-drift/raccoon/internal/report"
 	"github.com/tokio-drift/raccoon/internal/store"
 )
 
@@ -136,6 +137,64 @@ func caseFromRun(run runSnapshot) caseResponse {
 		resp.DurationNs = run.finished - run.started
 	}
 	return resp
+}
+
+func (s *Server) handleCaseReport(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	formatStr := r.URL.Query().Get("format")
+	if formatStr == "" {
+		formatStr = "html"
+	}
+	f, err := report.ParseFormat(formatStr)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, codeInvalidQuery, err.Error())
+		return
+	}
+
+	c, _, err := s.openCase(id)
+	if err != nil {
+		if errors.Is(err, errUnknownCase) {
+			writeErr(w, http.StatusNotFound, codeNotFound, "unknown case")
+			return
+		}
+		writeErr(w, http.StatusInternalServerError, codeInternal, "cannot open case")
+		return
+	}
+
+	data, err := report.Assemble(c)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, codeInternal, "cannot assemble report")
+		return
+	}
+
+	var (
+		body        []byte
+		contentType string
+		filename    string
+	)
+	switch f {
+	case report.FormatHTML:
+		body, err = report.RenderHTML(data)
+		contentType = "text/html; charset=utf-8"
+		filename = fmt.Sprintf("raccoon-report-%s.html", id)
+	case report.FormatJSON:
+		body, err = report.RenderJSON(data)
+		contentType = "application/json"
+		filename = fmt.Sprintf("raccoon-report-%s.json", id)
+	case report.FormatPDF:
+		body, err = report.RenderPDF(data)
+		contentType = "application/pdf"
+		filename = fmt.Sprintf("raccoon-report-%s.pdf", id)
+	}
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, codeInternal, "cannot render report")
+		return
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(body)
 }
 
 func metaInt(meta map[string]string, key string) int64 {

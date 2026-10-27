@@ -159,6 +159,18 @@ export class ApiClient {
     return `${this.baseUrl}/api/case/${encodeURIComponent(caseId)}/report${buildQuery({ format })}`
   }
 
+  /** Downloads a rendered report from the report endpoint. */
+  async downloadReport(caseId: string, format: ReportFormat = 'html'): Promise<{ blob: Blob; filename: string }> {
+    const token = getSessionToken()
+    const headers = new Headers()
+    if (token) headers.set('X-Raccoon-Token', token)
+    const response = await fetch(this.getReportUrl(caseId, format), { headers })
+    if (!response.ok) {
+      throw new ApiError(response.status, 'report_failed', "Couldn't create the report.")
+    }
+    return { blob: await response.blob(), filename: filenameFromDisposition(response.headers) }
+  }
+
   /** The event stream of a case. */
   openEventStream(caseId: string): EventStream {
     return createFetchEventStream(

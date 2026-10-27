@@ -246,6 +246,38 @@ func TestAPIContractRouteHappyPaths(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "report default", method: http.MethodGet, path: "/api/case/" + testID + "/report",
+			check: func(t *testing.T, body []byte) {
+				if !bytes.Contains(body, []byte("RACCOON case report")) {
+					t.Fatalf("default report body unexpected:\n%s", body)
+				}
+			},
+		},
+		{
+			name: "report html", method: http.MethodGet, path: "/api/case/" + testID + "/report?format=html",
+			check: func(t *testing.T, body []byte) {
+				if !bytes.Contains(body, []byte("RACCOON case report")) {
+					t.Fatalf("html report body unexpected:\n%s", body)
+				}
+			},
+		},
+		{
+			name: "report json", method: http.MethodGet, path: "/api/case/" + testID + "/report?format=json",
+			check: func(t *testing.T, body []byte) {
+				if !bytes.Contains(body, []byte(`"schemaVersion": 1`)) {
+					t.Fatalf("json report body unexpected:\n%s", body)
+				}
+			},
+		},
+		{
+			name: "report pdf", method: http.MethodGet, path: "/api/case/" + testID + "/report?format=pdf",
+			check: func(t *testing.T, body []byte) {
+				if !strings.HasPrefix(string(body), "%PDF-") || len(body) <= 2048 {
+					t.Fatalf("pdf report body unexpected (len=%d)", len(body))
+				}
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resp, body := h.do(t, tc.method, tc.path, nil, nil)

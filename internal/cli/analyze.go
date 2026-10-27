@@ -122,9 +122,6 @@ func runAnalyze(input string, opts analyzeOptions, stdout, stderr io.Writer) err
 		if err != nil {
 			return badInput(err)
 		}
-		if reportFormat == report.FormatPDF {
-			return badInput(fmt.Errorf("pdf reports are not available until Phase 12"))
-		}
 	}
 
 	st, err := os.Stat(input)

@@ -121,6 +121,22 @@ func TestAnalyzeWritesJSONReport(t *testing.T) {
 	if !bytes.Contains(html, []byte("RACCOON case report")) {
 		t.Fatalf("html report has unexpected content")
 	}
+
+	code, out, errOut = run(t, "report", cases[0].Dir, "--format", "pdf")
+	if code != 0 {
+		t.Fatalf("report exit %d, stderr %s", code, errOut)
+	}
+	pdfPath := filepath.Join(cases[0].ReportsDir(), "report.pdf")
+	if !strings.Contains(out, pdfPath) {
+		t.Fatalf("report output %q does not name %s", out, pdfPath)
+	}
+	pdf, err := os.ReadFile(pdfPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(pdf), "%PDF-") || len(pdf) <= 2048 {
+		t.Fatalf("pdf report unexpected length or prefix (len=%d)", len(pdf))
+	}
 }
 
 func TestDebugDumpStream(t *testing.T) {

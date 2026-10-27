@@ -217,6 +217,18 @@ export class MockApi implements RaccoonApi {
     window.setTimeout(tick, this.latencyMs)
     return stream
   }
+
+  async downloadReport(
+    caseId: string,
+    _format: ReportFormat = 'html',
+  ): Promise<{ blob: Blob; filename: string }> {
+    await this.delay()
+    const html = `<!DOCTYPE html><html><body><h1>Mock report for ${caseId}</h1></body></html>`
+    return {
+      blob: new Blob([html], { type: 'text/html' }),
+      filename: `raccoon-report-${caseId}.html`,
+    }
+  }
 }
 
 /** Paginates a list the way the API does: a limit and an opaque cursor. */

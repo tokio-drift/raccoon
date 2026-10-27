@@ -466,6 +466,25 @@ export function App({ api }: AppProps): JSX.Element {
     })
   }, [caseId, caseSummary, stage, progress, events.error, toast])
 
+  const handleExportDownload = useCallback(async () => {
+    if (!caseId) return
+    const { blob, filename } = await client.downloadReport(caseId, 'html')
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = filename || `raccoon-report-${caseSummary?.fileName || caseId}.html`
+    anchor.rel = 'noopener'
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+    const downloadedName = anchor.download
+    toast.push({
+      tone: 'success',
+      message: `Report downloaded as ${downloadedName}`,
+    })
+  }, [caseId, caseSummary?.fileName, client, toast])
+
   const counters: StageCounters = {
     streams: events.progress?.streams ?? caseSummary?.streams ?? 0,
     files: events.progress?.files ?? caseSummary?.files ?? 0,
@@ -577,6 +596,8 @@ export function App({ api }: AppProps): JSX.Element {
         {overlay === 'export' ? (
           <ExportDialog
             onClose={() => setOverlay(null)}
+            onDownload={handleExportDownload}
+            onCopyDiagnostics={copyDiagnostics}
             partial={partialResults}
             notChecked={exportFacts.notChecked}
             hasCredentials={exportFacts.hasCredentials}
@@ -825,6 +846,8 @@ export function App({ api }: AppProps): JSX.Element {
       {overlay === 'export' ? (
         <ExportDialog
           onClose={() => setOverlay(null)}
+          onDownload={handleExportDownload}
+          onCopyDiagnostics={copyDiagnostics}
           partial={partialResults}
           notChecked={exportFacts.notChecked}
           hasCredentials={exportFacts.hasCredentials}

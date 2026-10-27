@@ -68,7 +68,8 @@ func Write(casePath string, format Format) (string, error) {
 		name = "report.html"
 		body, err = renderHTML(data)
 	case FormatPDF:
-		return "", fmt.Errorf("%w: pdf export is implemented in Phase 12", ErrUnsupportedFormat)
+		name = "report.pdf"
+		body, err = renderPDF(data)
 	default:
 		return "", fmt.Errorf("%w: %q", ErrUnsupportedFormat, format)
 	}

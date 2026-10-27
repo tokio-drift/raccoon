@@ -29,6 +29,8 @@ export interface RaccoonApi {
   getGraph(caseId: string): Promise<GraphResponse>
   /** The URL of the rendered report; the endpoint serves the file directly. */
   getReportUrl(caseId: string, format: ReportFormat): string
+  /** Downloads a rendered report from the report endpoint. */
+  downloadReport(caseId: string, format?: ReportFormat): Promise<{ blob: Blob; filename: string }>
   uploadCapture(
     file: File,
     options?: {

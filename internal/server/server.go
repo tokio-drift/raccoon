@@ -338,6 +338,7 @@ func New(cfg Config) (*Server, error) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/upload", s.handleUpload)
 	mux.HandleFunc("GET /api/case/{id}", s.handleCase)
+	mux.HandleFunc("GET /api/case/{id}/report", s.handleCaseReport)
 	mux.HandleFunc("GET /api/case/{id}/events", s.handleEvents)
 	mux.HandleFunc("GET /api/case/{id}/events/stream", s.handleEventsStream)
 	mux.HandleFunc("GET /api/case/{id}/files", s.handleFiles)

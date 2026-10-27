@@ -1,4 +1,5 @@
 import type { JSX } from 'react'
+import { useState } from 'react'
 
 import { Icon } from '../../assets/icons'
 import { usePreferences, type TimeBasis } from '../../lib/preferences'
@@ -193,14 +194,20 @@ export function SettingsPopover({ onClose }: { onClose: () => void }): JSX.Eleme
   )
 }
 
-/** The export dialog (P2, UI_Design.md §8.12). The report endpoint arrives later. */
+/** The export dialog (P2, UI_Design.md §8.12). Downloads the HTML report. */
 export function ExportDialog({
   onClose,
+  onDownload,
+  onCopyDiagnostics,
   partial = false,
   notChecked = 0,
   hasCredentials = false,
 }: {
   onClose: () => void
+  /** Called when the user confirms; resolves when the download is ready. */
+  onDownload: () => Promise<void>
+  /** Copies diagnostic details for troubleshooting. */
+  onCopyDiagnostics?: () => void
   /** The analysis stopped early, so the report is marked as partial (§8.5). */
   partial?: boolean
   /** The number of files whose threat check never arrived. */
@@ -208,6 +215,21 @@ export function ExportDialog({
   /** A credential was sent in cleartext and is part of the report. */
   hasCredentials?: boolean
 }): JSX.Element {
+  const [status, setStatus] = useState<'idle' | 'preparing' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  async function handleDownload() {
+    setStatus('preparing')
+    setErrorMsg(null)
+    try {
+      await onDownload()
+      onClose()
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : String(err))
+      setStatus('error')
+    }
+  }
+
   return (
     <Modal title="Export report" onClose={onClose}>
       <p>A single report of this case: summary, storyboard, files and their threat check results.</p>
@@ -221,12 +243,39 @@ export function ExportDialog({
       {partial ? (
         <p className="text-secondary">Report will be marked as partial.</p>
       ) : null}
+      {status === 'error' && errorMsg ? (
+        <div className="banner banner--error" role="alert">
+          <p>{"Couldn't create the report."}</p>
+          <p className="text-secondary">{errorMsg}</p>
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <Button variant="secondary" onClick={handleDownload}>
+              Try again
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (onCopyDiagnostics) {
+                  onCopyDiagnostics()
+                } else {
+                  void navigator.clipboard.writeText(errorMsg ?? '')
+                }
+              }}
+            >
+              Copy diagnostic info
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <div className="overlay__actions">
         <Button variant="secondary" onClick={onClose} data-overlay-cancel>
           Cancel
         </Button>
-        <Button variant="primary" disabled title="Report export arrives with the report endpoint.">
-          Download report
+        <Button
+          variant="primary"
+          disabled={status === 'preparing'}
+          onClick={handleDownload}
+        >
+          {status === 'preparing' ? 'Preparing report\u2026' : 'Download report'}
         </Button>
       </div>
     </Modal>
