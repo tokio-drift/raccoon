@@ -132,6 +132,14 @@ func TestEventsQuery(t *testing.T) {
 	if len(got) != 1 || got[0].Details["off"] != float64(3) {
 		t.Fatalf("numeric details = %#v", got)
 	}
+
+	findings, err := db.Findings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 1 || findings[0].ID != 9 || findings[0].Technique != "T1110" {
+		t.Fatalf("findings = %#v", findings)
+	}
 }
 
 func TestEventsFilters(t *testing.T) {

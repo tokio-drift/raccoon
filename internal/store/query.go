@@ -418,6 +418,36 @@ func (db *DB) Meta() (map[string]string, error) {
 	return out, nil
 }
 
+// Findings returns all findings ordered by id.
+func (db *DB) Findings() ([]model.Finding, error) {
+	rows, err := db.conn.Query("SELECT id, title, technique, severity, explanation, evidence_event_ids FROM findings ORDER BY id ASC")
+	if err != nil {
+		return nil, fmt.Errorf("store: query findings: %w", err)
+	}
+	defer rows.Close()
+
+	var out []model.Finding
+	for rows.Next() {
+		var (
+			f     model.Finding
+			sev   string
+			evIDs sql.NullString
+		)
+		if err := rows.Scan(&f.ID, &f.Title, &f.Technique, &sev, &f.Explanation, &evIDs); err != nil {
+			return nil, fmt.Errorf("store: scan finding: %w", err)
+		}
+		f.Severity = model.Severity(sev)
+		if evIDs.Valid && evIDs.String != "" && evIDs.String != "null" {
+			_ = json.Unmarshal([]byte(evIDs.String), &f.EvidenceEventIDs)
+		}
+		out = append(out, f)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("store: query findings: %w", err)
+	}
+	return out, nil
+}
+
 // scanEvent reads one event row in eventColumns order.
 func scanEvent(sc interface{ Scan(...any) error }, e *model.Event) error {
 	var (
