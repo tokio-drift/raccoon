@@ -135,12 +135,18 @@ func parseStream(ctx *proto.StreamContext, dir model.Direction) []dnsMsg {
 	return out
 }
 
-func decode(payload []byte) (*layers.DNS, bool) {
-	var d layers.DNS
-	if err := d.DecodeFromBytes(payload, gopacket.NilDecodeFeedback); err != nil {
+func decode(payload []byte) (d *layers.DNS, ok bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			d = nil
+			ok = false
+		}
+	}()
+	var dns layers.DNS
+	if err := dns.DecodeFromBytes(payload, gopacket.NilDecodeFeedback); err != nil {
 		return nil, false
 	}
-	return &d, true
+	return &dns, true
 }
 
 func correlate(msgs []dnsMsg) []*query {
