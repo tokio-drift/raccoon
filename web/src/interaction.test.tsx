@@ -109,6 +109,21 @@ function stubFetch() {
       }
       if (url.includes('/files')) return jsonResponse({ items: [FILE], nextCursor: null })
       if (url.includes('/streams')) return jsonResponse({ items: [], nextCursor: null })
+      if (url.includes('/report')) {
+        return {
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          headers: new Headers({
+            'Content-Disposition': 'attachment; filename="raccoon-report-ftp_upload_png.pcap.html"',
+            'Content-Type': 'text/html; charset=utf-8',
+          }),
+          blob: async () =>
+            new Blob(['<!DOCTYPE html><html><body>Report</body></html>'], {
+              type: 'text/html',
+            }),
+        } as unknown as Response
+      }
       return jsonResponse(READY_CASE)
     }),
   )
@@ -238,6 +253,28 @@ describe('the export and the theme (UI_Design.md §16)', () => {
     await user.keyboard('{Escape}')
     await waitFor(() => expect(dialog).not.toBeInTheDocument())
     expect(document.activeElement).toBe(exportButton)
+  })
+
+  it('downloads the HTML report and announces completion with a toast', async () => {
+    stubFetch()
+    const user = userEvent.setup()
+    renderApp()
+    await screen.findByText('ftp_upload_png.pcap')
+
+    const exportButton = screen.getByRole('button', { name: /Export report/ })
+    await user.click(exportButton)
+    const dialog = await screen.findByRole('dialog', { name: 'Export report' })
+    expect(dialog).toBeInTheDocument()
+
+    const downloadButton = within(dialog).getByRole('button', { name: 'Download report' })
+    await user.click(downloadButton)
+
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+    expect(
+      await screen.findByText(
+        'Report downloaded as raccoon-report-ftp_upload_png.pcap.html',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('keeps the theme choice when the app is opened again', async () => {
