@@ -327,4 +327,57 @@ func TestWriteReport(t *testing.T) {
 	if len(htmlContent) == 0 {
 		t.Errorf("written html report is empty")
 	}
+
+	// Write PDF
+	pdfPath, err := Write(c.Dir, FormatPDF)
+	if err != nil {
+		t.Fatalf("Write(PDF) failed: %v", err)
+	}
+	if filepath.Base(pdfPath) != "report.pdf" {
+		t.Errorf("expected report.pdf, got %s", filepath.Base(pdfPath))
+	}
+	pdfContent, err := os.ReadFile(pdfPath)
+	if err != nil {
+		t.Fatalf("ReadFile(pdf) failed: %v", err)
+	}
+	if !strings.HasPrefix(string(pdfContent), "%PDF-") {
+		t.Errorf("PDF report does not start with %%PDF-")
+	}
+	if len(pdfContent) <= 2048 {
+		t.Errorf("PDF report length = %d, want > 2048", len(pdfContent))
+	}
+}
+
+func TestRenderPDF(t *testing.T) {
+	tmp := t.TempDir()
+	c := seedTestCase(t, tmp, "20261028-120000-fa1101", false)
+
+	data, err := Load(c)
+	if err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
+
+	// Add non-Latin1 and long title to test wrapping and replacement
+	data.Events = append(data.Events, model.Event{
+		ID:       99,
+		TS:       4000000000,
+		PacketNo: 20,
+		Type:     model.EvHTTPTx,
+		Severity: model.SevInfo,
+		Proto:    "http",
+		Title:    "HTTP transaction with Unicode: 🦊 raccoon / “quotes” / 日本語 / " + strings.Repeat("very long string wrapping check ", 5),
+	})
+
+	pdfBytes, err := RenderPDF(data)
+	if err != nil {
+		t.Fatalf("RenderPDF failed: %v", err)
+	}
+
+	if !strings.HasPrefix(string(pdfBytes), "%PDF-") {
+		t.Errorf("PDF output does not start with %%PDF-")
+	}
+
+	if len(pdfBytes) <= 2048 {
+		t.Errorf("PDF output length = %d bytes, want > 2 KB", len(pdfBytes))
+	}
 }
