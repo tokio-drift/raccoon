@@ -9,6 +9,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/tokio-drift/raccoon/internal/limits"
 	"github.com/tokio-drift/raccoon/internal/model"
 	"github.com/tokio-drift/raccoon/internal/proto"
 	"github.com/tokio-drift/raccoon/internal/prototest"
@@ -280,5 +281,37 @@ func TestChunkedJPEGFixture(t *testing.T) {
 	}
 	if e.Details["bodyLen"] != len(body) {
 		t.Errorf("bodyLen = %v, want %d", e.Details["bodyLen"], len(body))
+	}
+}
+
+func TestHTTPGzipBombCapped(t *testing.T) {
+	// Construct a gzip bomb: 110 MB of zero bytes compressed into a few KB.
+	var b bytes.Buffer
+	zw := gzip.NewWriter(&b)
+	zeroBlock := make([]byte, 1024*1024) // 1 MB block
+	for i := 0; i < 110; i++ {
+		if _, err := zw.Write(zeroBlock); err != nil {
+			t.Fatalf("write zero block: %v", err)
+		}
+	}
+	if err := zw.Close(); err != nil {
+		t.Fatalf("close gzip: %v", err)
+	}
+	compressed := b.Bytes()
+
+	response := fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: %d\r\n\r\n%s",
+		len(compressed), string(compressed))
+	ctx := newCtx("GET /bomb HTTP/1.1\r\nHost: example.com\r\n\r\n", response)
+	run(t, ctx)
+
+	files := ctx.FileSources()
+	if len(files) != 1 {
+		t.Fatalf("file sources = %d, want 1", len(files))
+	}
+	if files[0].Len > limits.MaxGzipBody {
+		t.Fatalf("file source length %d exceeded limits.MaxGzipBody (%d)", files[0].Len, limits.MaxGzipBody)
+	}
+	if files[0].Len != limits.MaxGzipBody {
+		t.Fatalf("file source length = %d, want capped at %d", files[0].Len, limits.MaxGzipBody)
 	}
 }
