@@ -24,7 +24,16 @@ if [ ! -f "$root/web/package.json" ]; then
 	exit 1
 fi
 
-tmp="$(mktemp -d)"
+tmp_parent="${TMPDIR:-}"
+if [ -z "$tmp_parent" ] && [ -d "/mnt/c/Users/Admin/AppData/Local/Temp" ]; then
+	tmp_parent="/mnt/c/Users/Admin/AppData/Local/Temp"
+fi
+
+if [ -n "$tmp_parent" ]; then
+	tmp="$(mktemp -d -p "$tmp_parent")"
+else
+	tmp="$(mktemp -d)"
+fi
 trap 'rm -rf "$tmp"' EXIT
 
 cp -R "$root/web/." "$tmp/"

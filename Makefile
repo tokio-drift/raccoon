@@ -2,7 +2,7 @@ GO ?= go
 PCAP ?= testdata/tcp_basic.pcap
 BIN := bin/raccoon
 
-.PHONY: all build test fmt vet check ui run testdata bench lab clean
+.PHONY: all build test fmt vet check ui run testdata bench lab clean release-check
 
 all: check
 
@@ -47,3 +47,6 @@ lab:
 
 clean:
 	rm -rf bin
+
+release-check:
+	./scripts/release_check.sh
