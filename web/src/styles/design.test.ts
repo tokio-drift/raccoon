@@ -214,7 +214,7 @@ describe('the assets of the design (UI_Design.md §16, visual)', () => {
   it('uses the paw motif only in the empty and the failure states', () => {
     const users = sources
       .filter((path) => readFileSync(path, 'utf8').includes('PawMark'))
-      .map((path) => path.replace(`${projectRoot}/`, ''))
+      .map((path) => path.replaceAll('\\', '/').replace(`${projectRoot.replaceAll('\\', '/')}/`, ''))
       .filter((path) => path !== 'src/assets/brand.tsx')
     expect(users).toEqual(['src/components/content/Dropzone.tsx'])
   })
