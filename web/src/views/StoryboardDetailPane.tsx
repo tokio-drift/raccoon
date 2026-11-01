@@ -119,12 +119,11 @@ export function StoryboardDetailPane({
           </button>
         ) : null}
         {event.ts ? (
-          <p
-            className="storyboard-detail__time"
-            title={formatClock(parseTimestamp(event.ts), { micro: true })}
-          >
-            {`${formatElapsed(parseTimestamp(event.ts) - captureStart)} · ${formatClock(parseTimestamp(event.ts))}`}
-          </p>
+          <Tooltip text={formatClock(parseTimestamp(event.ts), { micro: true })}>
+            <p className="storyboard-detail__time">
+              {`${formatElapsed(parseTimestamp(event.ts) - captureStart)} · ${formatClock(parseTimestamp(event.ts))}`}
+            </p>
+          </Tooltip>
         ) : (
           <p className="storyboard-detail__time storyboard-detail__time--muted">Time unknown</p>
         )}
@@ -521,6 +520,7 @@ import { Icon } from '../assets/icons'
 import { SeverityBadge, VerdictBadge } from '../components/content/Badges'
 import { Button } from '../components/primitives/Button'
 import { CopyButton } from '../components/primitives/CopyButton'
+import { Tooltip } from '../components/primitives/Tooltip'
 import { DetailSection } from '../components/content/DetailSection'
 import { EvidenceChip } from '../components/content/EvidenceChip'
 import { buildDetailView, MAX_LIST_ITEMS } from '../lib/details'

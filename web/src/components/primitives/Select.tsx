@@ -168,7 +168,11 @@ export function MultiSelect({
         onKeyDown={onTriggerKeyDown}
       >
         <span className="select__label">{label}</span>
-        <span className="select__count">{`${label} · ${values.length}`}</span>
+        {values.length > 0 ? (
+          <span className="select__count" aria-label={`${values.length} selected`}>
+            {` · ${values.length}`}
+          </span>
+        ) : null}
         <Icon name="chevron-down" size={16} />
       </button>
       {open ? (

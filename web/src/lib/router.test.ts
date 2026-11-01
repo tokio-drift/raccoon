@@ -83,4 +83,15 @@ describe('route parsing', () => {
       params: { type: 'TCP_ANOMALY' },
     })
   })
+
+  it('redirects root with goto parameter to the target case path', () => {
+    const { route, ignored } = parseRoute('/', '?goto=/case/abc/storyboard')
+    expect(ignored).toBe(false)
+    expect(route).toEqual({
+      kind: 'case',
+      caseId: 'abc',
+      tab: 'storyboard',
+      params: {},
+    })
+  })
 })

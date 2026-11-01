@@ -145,3 +145,26 @@ func TestServeKeepsCaseOnDisk(t *testing.T) {
 		t.Fatalf("case directory was removed: %v", err)
 	}
 }
+
+func TestServeCaseWithDeepLink(t *testing.T) {
+	opened := stubBrowser(t)
+	base := t.TempDir()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var stdout, stderr syncBuffer
+	done := make(chan error, 1)
+	go func() { done <- serveCaseWith(ctx, base, "20260101-120000-abcdef", 0, false, &stdout, &stderr) }()
+	waitFor(t, &stdout, "Dashboard: ")
+	cancel()
+	if err := <-done; err != nil {
+		t.Fatalf("serveCaseWith: %v", err)
+	}
+	if len(*opened) != 1 {
+		t.Fatalf("browser calls %d, want 1", len(*opened))
+	}
+	wantSuffix := "&goto=/case/20260101-120000-abcdef/storyboard"
+	if !strings.Contains((*opened)[0], wantSuffix) {
+		t.Fatalf("opened url %q, want containing %q", (*opened)[0], wantSuffix)
+	}
+}

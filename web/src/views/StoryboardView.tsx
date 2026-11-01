@@ -63,7 +63,7 @@ export function StoryboardView({
 }: StoryboardViewProps): JSX.Element {
   const [preferences] = usePreferences()
   const { navigate } = useRoute()
-  const [briefCollapsed, setBriefCollapsed] = useState(false)
+  const [briefCollapsed, setBriefCollapsed] = useState(true)
   const [expandedCards, setExpandedCards] = useState<number[]>([])
   const [focusRequest, setFocusRequest] = useState<number | null>(null)
   const searchRef = useRef<HTMLInputElement | null>(null)

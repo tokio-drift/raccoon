@@ -98,6 +98,21 @@ describe('useUpload', () => {
     expect(result.current.state.total).toBe(1000)
   })
 
+  it('transitions to processing status when transfer completes', () => {
+    const fake = fakeApi()
+    const { result } = renderHook(() => useUpload(fake.api))
+
+    act(() => {
+      result.current.start([capture('capture.pcap', 1000)])
+    })
+    act(() => {
+      fake.progress({ loaded: 1000, total: 1000 })
+    })
+
+    expect(result.current.state.status).toBe('processing')
+    expect(result.current.state.uploaded).toBe(1000)
+  })
+
   it('calls back with the new case when the upload finishes', async () => {
     const fake = fakeApi()
     const onUploaded = vi.fn()

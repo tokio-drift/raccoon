@@ -14,6 +14,7 @@ export type DropzoneState =
   | 'invalid'
   | 'too-large'
   | 'uploading'
+  | 'processing'
   | 'failed'
 
 /** The upload limit of the server, in bytes (`limits.UploadMaxBytes`). */
@@ -116,6 +117,17 @@ export function Dropzone({
           <Button variant="secondary" onClick={onCancel}>
             Cancel upload
           </Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (state === 'processing') {
+    return (
+      <div className="dropzone dropzone--uploading">
+        <div className="upload-card">
+          <p className="upload-card__name">{fileName ?? 'Capture'}</p>
+          <p className="upload-card__meta">Starting analysis…</p>
         </div>
       </div>
     )

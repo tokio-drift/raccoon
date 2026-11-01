@@ -6,12 +6,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-12);
+  gap: var(--space-16);
   max-width: 880px;
   margin: 0 auto;
-  padding: var(--space-32) var(--page-gutter);
+  padding: var(--space-64) var(--page-gutter) var(--space-32);
   text-align: center;
-  overflow: auto;
+  /* No overflow: auto — the outer app-shell handles scroll; this column must not create a nested scrollbar */
 }
 
 .empty-dashboard__brand {
@@ -1088,6 +1088,7 @@
   align-items: center;
   gap: var(--space-12);
   min-height: var(--control-height);
+  padding-inline: var(--page-gutter);
 }
 
 .streams-view__title {

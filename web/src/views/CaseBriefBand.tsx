@@ -53,7 +53,7 @@ export function CaseBriefBand({
   verdictCounts,
   findingCount,
   duration,
-  captureStart,
+  captureStart: _captureStart,
   collapsed,
   onToggleCollapsed,
   onGoToFirstCritical,
@@ -94,7 +94,7 @@ export function CaseBriefBand({
           {total === 0 ? <span className="case-brief__count">No events</span> : null}
         </p>
 
-        <p className="case-brief__span">{formatElapsedRange(captureStart, captureStart + duration)}</p>
+        <p className="case-brief__span">{formatElapsedRange(0, duration)}</p>
 
         <div className="case-brief__actions">
           {findingCount > 0 ? (

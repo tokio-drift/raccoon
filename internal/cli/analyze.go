@@ -201,7 +201,7 @@ func runAnalyze(input string, opts analyzeOptions, stdout, stderr io.Writer) err
 		fmt.Fprintf(stdout, "Report: %s\n", dst)
 		return nil
 	}
-	return serveCase(ctx, base, opts.port, opts.noBrowser, stdout, stderr)
+	return serveCaseWith(ctx, base, c.ID, opts.port, opts.noBrowser, stdout, stderr)
 }
 
 func newIntelService(ctx context.Context, db *store.DB, c *casedir.Case, opts analyzeOptions) (*intel.Service, error) {

@@ -114,3 +114,64 @@ func serveCase(ctx context.Context, base string, port int, noBrowser bool, stdou
 	fmt.Fprintf(stdout, "Stopped. Cases are kept in %s\n", base)
 	return nil
 }
+
+// serveCaseWith is like serveCase but opens the browser directly at the
+// finished case's storyboard URL instead of the root dashboard (UI_Design.md §3.4, U1).
+func serveCaseWith(ctx context.Context, base, caseID string, port int, noBrowser bool, stdout, stderr io.Writer) error {
+	token, err := newToken()
+	if err != nil {
+		return internal(err)
+	}
+	addr := ""
+	if port != 0 {
+		addr = fmt.Sprintf("127.0.0.1:%d", port)
+	}
+	dist, err := fs.Sub(web.Dist, "dist")
+	if err != nil {
+		return internal(fmt.Errorf("open embedded UI: %w", err))
+	}
+	s, err := server.New(server.Config{
+		Token:   token,
+		DataDir: base,
+		Dist:    dist,
+		Addr:    addr,
+	})
+	if err != nil {
+		return internal(fmt.Errorf("start server: %w", err))
+	}
+	if err := s.Start(); err != nil {
+		return internal(fmt.Errorf("listen: %w", err))
+	}
+	defer s.Close()
+
+	writeDashboard(stdout, s)
+
+	// Build the case-specific storyboard URL instead of the root dashboard.
+	baseURL := dashboardURL(s)
+	var openURL string
+	if baseURL != "" && caseID != "" {
+		openURL = baseURL + s.Token() +
+			"&goto=/case/" + caseID + "/storyboard"
+	} else {
+		openURL = dashboardFullURL(s)
+	}
+	if !noBrowser && openURL != "" {
+		if err := openBrowserFn(openURL); err != nil {
+			fmt.Fprintf(stderr, "warning: could not open a browser: %v\n", err)
+			fmt.Fprintf(stderr, "open %s manually\n", openURL)
+		}
+	}
+
+	<-ctx.Done()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownGrace)
+	defer cancel()
+	if err := s.Shutdown(shutdownCtx); err != nil {
+		return internal(fmt.Errorf("shutdown: %w", err))
+	}
+	if pending := s.PendingAnalyses(); pending > 0 {
+		fmt.Fprintf(stderr, "warning: %d analysis(es) were still running; the case is kept on disk\n", pending)
+	}
+	fmt.Fprintf(stdout, "Stopped. Cases are kept in %s\n", base)
+	return nil
+}

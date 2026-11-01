@@ -194,6 +194,13 @@ export function App({ api }: AppProps): JSX.Element {
     setCompletion({ summary: caseSummary, at: Date.now() })
   }, [running, caseSummary, completion])
 
+  // Auto-dismiss the completion banner after 8 s (UI_Design.md §8.9).
+  useEffect(() => {
+    if (!completion) return
+    const id = window.setTimeout(() => setCompletion(null), 8000)
+    return () => window.clearTimeout(id)
+  }, [completion])
+
   // The Processing view becomes the Storyboard: the focus follows (UI_Design.md
   // §8.9). On another tab the focus stays where it is.
   useEffect(() => {
@@ -374,11 +381,6 @@ export function App({ api }: AppProps): JSX.Element {
     }
     navigate(`/case/${encodeURIComponent(caseId)}/storyboard?event=${critical.firstId}`)
   }, [caseId, critical.firstId, navigate])
-
-  const openFiles = useCallback(() => {
-    if (!caseId) return
-    navigate(`/case/${encodeURIComponent(caseId)}/files`)
-  }, [caseId, navigate])
 
   // The filters of the storyboard live in the URL (§3.2). The event the reader
   // has selected is kept, because the filter bar does not own it.
@@ -732,17 +734,9 @@ export function App({ api }: AppProps): JSX.Element {
             tone="info"
             onDismiss={() => setCompletion(null)}
             actions={
-              <>
-                <Button variant="primary" onClick={critical.firstId === null ? openStoryboard : openFirstCritical}>
-                  {critical.firstId === null ? 'Start reading' : 'Go to first critical event'}
-                </Button>
-                <Button variant="secondary" onClick={openFiles}>
-                  Open Files
-                </Button>
-                <Button variant="tertiary" onClick={() => setOverlay('export')}>
-                  Export report
-                </Button>
-              </>
+              <Button variant="primary" onClick={critical.firstId === null ? openStoryboard : openFirstCritical}>
+                {critical.firstId === null ? 'Start reading' : 'Go to first critical event'}
+              </Button>
             }
           >
             {`Analysis finished in ${formatDuration(completion.summary.durationNs / 1_000_000)}.`}

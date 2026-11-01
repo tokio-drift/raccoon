@@ -1,5 +1,13 @@
 # RACCOON
 
+**R**eliable and **C**onsistent **C**ybersecurity **O**ver **N**etwork
+
+A network forensics tool written in Go. Give it a `.pcap` or `.pcapng` capture
+file and it rebuilds the conversations, extracts transferred files, and
+generates a timeline of everything that happened — down to the raw bytes.
+
+---
+
 **R**eliable **a**nd **C**onsistent **C**ybersecurity **O**ver **N**etwork  
 A high-performance, single-binary network forensics and PCAP analysis tool written in pure Go (cgo-free) with an embedded React investigation dashboard.
 

@@ -4,7 +4,7 @@ import type { RaccoonApi } from '../api/api'
 import { checkCapture, firstCaptureFile, UPLOAD_LIMIT_BYTES } from '../lib/upload'
 
 /** The states of the upload flow (UI_Design.md §8.2). */
-export type UploadStatus = 'idle' | 'invalid' | 'too-large' | 'uploading' | 'failed'
+export type UploadStatus = 'idle' | 'invalid' | 'too-large' | 'uploading' | 'processing' | 'failed'
 
 export interface UploadState {
   status: UploadStatus
@@ -77,15 +77,21 @@ export function useUpload(api: RaccoonApi, options: UseUploadOptions = {}): Uplo
       })
       try {
         const response = await api.uploadCapture(file, {
-          onProgress: (progress) =>
+          onProgress: (progress) => {
             setState((previous) => ({
               ...previous,
               uploaded: progress.loaded,
               total: progress.total || previous.total,
-            })),
+            }))
+            if (progress.total > 0 && progress.loaded >= progress.total) {
+              setState((s) => ({ ...s, status: 'processing' }))
+            }
+          },
           signal: controller.signal,
         })
         onUploaded?.(response.caseId)
+        // Reset to idle so returning to the dashboard shows a fresh dropzone.
+        setState(INITIAL)
       } catch (error) {
         if (isCancelled(error)) {
           setState((previous) => ({

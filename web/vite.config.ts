@@ -6,6 +6,19 @@ import react from '@vitejs/plugin-react'
 // and never references a remote asset.
 export default defineConfig({
   plugins: [react()],
+  // Dev-server proxy: forward /api requests to the Go backend so that
+  // `npm run dev` works alongside `./bin/raccoon serve --port <PORT>`.
+  // Set RACCOON_PORT env var to match the port the binary uses (default 7777).
+  server: {
+    proxy: {
+      '/api': {
+        target: `http://127.0.0.1:${process.env['RACCOON_PORT'] ?? 7777}`,
+        changeOrigin: false,
+        // SSE streams need the connection kept alive through the proxy.
+        headers: { Connection: 'keep-alive' },
+      },
+    },
+  },
   // The server serves the app from the root, so the assets are addressed
   // absolutely. A relative path would break a reload on a deep link such as
   // /case/{id}/storyboard, where the browser would look for the assets under

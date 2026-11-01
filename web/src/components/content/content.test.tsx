@@ -500,6 +500,12 @@ describe('Dropzone', () => {
     expect(screen.getByText('Processing capture.pcap…')).toBeInTheDocument()
   })
 
+  it('shows starting analysis in processing state', () => {
+    render(<Dropzone state="processing" fileName="capture.pcap" />)
+    expect(screen.getByText('Starting analysis…')).toBeInTheDocument()
+    expect(screen.getByText('capture.pcap')).toBeInTheDocument()
+  })
+
   it('offers a retry and another file when the upload failed', async () => {
     const onRetry = vi.fn()
     const user = userEvent.setup()

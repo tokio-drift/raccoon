@@ -103,6 +103,11 @@ export function parseRoute(pathname: string, search: string): { route: Route; ig
   const segments = cleanPath.split('/').filter((segment) => segment.length > 0)
 
   if (segments.length === 0) {
+    const query = new URLSearchParams(searchPart)
+    const goto = query.get('goto')
+    if (goto) {
+      return parseRoute(goto, '')
+    }
     return { route: { kind: 'empty' }, ignored: false }
   }
 
@@ -149,6 +154,13 @@ export function parseRoute(pathname: string, search: string): { route: Route; ig
 /** The current route, kept in sync with the browser history. */
 export function useRoute(): RouteState {
   const [state, setState] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.pathname === '/') {
+      const searchParams = new URLSearchParams(window.location.search)
+      const goto = searchParams.get('goto')
+      if (goto) {
+        window.history.replaceState(null, '', goto)
+      }
+    }
     const parsed = parseRoute(window.location.pathname, window.location.search)
     return { route: parsed.route, ignored: parsed.ignored }
   })
