@@ -299,8 +299,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
-  padding: var(--space-8) var(--page-gutter);
-  border-bottom: var(--border-hairline) solid var(--border-subtle);
+  padding: var(--space-8) var(--page-gutter) var(--space-8);
+  /* No border-bottom here — the TimeStrip sits directly below and the
+     storyboard-jump border-bottom below it acts as the single separator. */
   background: var(--bg-surface);
 }
 
@@ -681,7 +682,7 @@
   align-items: center;
   gap: var(--space-8);
   padding: var(--space-8) var(--space-12);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: var(--border-hairline) solid var(--border-subtle);
   background: var(--bg-surface);
   flex: 0 0 auto;
 }
@@ -711,7 +712,7 @@
   background: var(--bg-sunken);
   color: var(--text-secondary);
   font: var(--text-caption);
-  border-bottom: 1px solid var(--border-subtle);
+  border-bottom: var(--border-hairline) solid var(--border-subtle);
 }
 
 /* The related file of the detail pane (§5.8). */

@@ -1768,18 +1768,21 @@ button.detail-section__heading {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* Keep 8 px wide so it's easy to grab, but show only a hairline border
+     visually — the solid filled bar looked like a crude thick divider. */
   width: 8px;
   min-width: 8px;
   cursor: col-resize;
-  background: var(--border-subtle);
+  background: transparent;
+  border-left: var(--border-hairline) solid var(--border-subtle);
   touch-action: none;
 }
 
 .pane-resizer__grip {
-  width: 2px;
-  height: 32px;
-  border-radius: 1px;
-  background: var(--border-strong);
+  width: 3px;
+  height: 40px;
+  border-radius: 2px;
+  background: var(--accent);
   opacity: 0;
   transition: opacity var(--motion-fade) linear;
 }
@@ -1927,10 +1930,12 @@ button.detail-section__heading {
 /* -------------------------------------------------------------- time strip */
 .time-strip {
   position: relative;
-  height: 28px;
-  border: var(--border-hairline) solid var(--border-subtle);
-  border-radius: var(--radius-badge);
+  height: 24px;
+  overflow: hidden;
   background: var(--bg-sunken);
+  border-bottom: var(--border-hairline) solid var(--border-subtle);
+  margin: 0 var(--page-gutter);
+  border-radius: var(--radius-badge);
 }
 
 .time-strip__range {
@@ -1945,11 +1950,17 @@ button.detail-section__heading {
 .time-strip__tick {
   position: absolute;
   bottom: 0;
-  width: 3px;
+  width: 4px;
   border: 0;
-  border-radius: 1px 1px 0 0;
+  border-radius: 2px 2px 0 0;
   padding: 0;
   cursor: pointer;
+  opacity: 0.55;
+  transition: opacity var(--motion-fade) linear;
+}
+
+.time-strip__tick:hover {
+  opacity: 1;
 }
 
 .time-strip__tick--info {
@@ -1958,16 +1969,17 @@ button.detail-section__heading {
 }
 
 .time-strip__tick--warning {
-  height: 16px;
+  height: 14px;
   background: var(--warning);
 }
 
 .time-strip__tick--critical {
-  height: 24px;
+  height: 20px;
   background: var(--critical);
 }
 
 .time-strip__tick--selected {
+  opacity: 1;
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
