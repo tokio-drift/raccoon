@@ -10,40 +10,40 @@
   color-scheme: light;
 
   /* ---------------------------------------------------------------- colour */
-  --bg-page: #f3ede2;
-  --bg-surface: #fbf8f1;
-  --bg-sunken: #e9e0d0;
-  --border-subtle: #e0d6c4;
-  --border-strong: #8c7e69;
-  --text-primary: #2a2320;
-  --text-secondary: #54483e;
-  --text-muted: #6b5e50;
-  --accent: #7a4b2a;
-  --accent-hover: #633b1f;
-  --accent-on: #fff8ee;
-  --accent-tint: #ebd8c3;
-  --focus-ring: #1f6b66;
-  --evidence: #1f6b66;
-  --info: #2f6389;
-  --info-tint: #e3ecf1;
-  --warning: #a85408;
-  --warning-tint: #f6e4d0;
-  --critical: #a3281c;
-  --critical-tint: #f3d9d3;
-  --neutral-status: #55633a;
-  --dir-c2s: #ebd9b8;
-  --dir-s2c: #d3dde0;
-  --text-on-warning-tint: #8a4506;
-  --text-on-critical-tint: #8c2217;
-  --text-on-info-tint: #264f6e;
-  --text-on-accent-tint: #4a2e19;
+  --bg-page: #f4f5f7;
+  --bg-surface: #ffffff;
+  --bg-sunken: #e9ecf0;
+  --border-subtle: #e2e8f0;
+  --border-strong: #64748b;
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #475569;
+  --accent: #1e293b;
+  --accent-hover: #0f172a;
+  --accent-on: #ffffff;
+  --accent-tint: #e2e8f0;
+  --focus-ring: #0369a1;
+  --evidence: #0369a1;
+  --info: #1d4ed8;
+  --info-tint: #dbeafe;
+  --warning: #b45309;
+  --warning-tint: #fef3c7;
+  --critical: #b91c1c;
+  --critical-tint: #fee2e2;
+  --neutral-status: #15803d;
+  --dir-c2s: #fef3c7;
+  --dir-s2c: #e0f2fe;
+  --text-on-warning-tint: #92400e;
+  --text-on-critical-tint: #991b1b;
+  --text-on-info-tint: #1e40af;
+  --text-on-accent-tint: #0f172a;
 
   /* Data-visualisation palette (§10.1) — always paired with text/pattern. */
-  --chart-1: #1f6b66;
-  --chart-2: #7a4b2a;
-  --chart-3: #2f6389;
-  --chart-4: #a85408;
-  --chart-5: #55633a;
+  --chart-1: #0369a1;
+  --chart-2: #1e293b;
+  --chart-3: #1d4ed8;
+  --chart-4: #b45309;
+  --chart-5: #15803d;
   --chart-6: #6e4a68;
 
   /* ------------------------------------------------------------ typography */

@@ -72,4 +72,15 @@ describe('route parsing', () => {
     expect(parseRoute('/case/abc/files', '?low=0').ignored).toBe(false)
     expect(parseRoute('/case/abc/files', '?low=2').ignored).toBe(true)
   })
+
+  it('handles query strings embedded directly in the pathname', () => {
+    const { route, ignored } = parseRoute('/case/abc/storyboard?type=TCP_ANOMALY', '')
+    expect(ignored).toBe(false)
+    expect(route).toEqual({
+      kind: 'case',
+      caseId: 'abc',
+      tab: 'storyboard',
+      params: { type: 'TCP_ANOMALY' },
+    })
+  })
 })

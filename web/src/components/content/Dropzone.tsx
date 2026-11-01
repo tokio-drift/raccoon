@@ -101,10 +101,13 @@ export function Dropzone({
 
   if (state === 'uploading') {
     const percent = total > 0 ? Math.round((uploaded / total) * 100) : 0
+    const isDoneUploading = total > 0 && uploaded >= total
     return (
       <div className="dropzone dropzone--uploading">
         <div className="dropzone__progress-card">
-          <p className="dropzone__progress-title">{`Uploading ${fileName ?? ''}…`}</p>
+          <p className="dropzone__progress-title">
+            {isDoneUploading ? `Processing ${fileName ?? ''}…` : `Uploading ${fileName ?? ''}…`}
+          </p>
           <p className="dropzone__progress-name">{fileName}</p>
           <ProgressBar percent={percent} label="Upload progress" />
           <p className="dropzone__progress-count">

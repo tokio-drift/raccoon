@@ -79,12 +79,12 @@ export function PawMark({ size = 48, className, title }: PawMarkProps): JSX.Elem
 
 /** The favicon: the mask mark as an inline SVG data URL (§10.9). */
 export const MASK_FAVICON =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M6 16c0-5 8-9 18-9s18 4 18 9v8c0 8-8 16-18 16S6 32 6 24Z' fill='none' stroke='%237A4B2A' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M13 20c2.5-2 6-2 8.5 0-1 3-2.5 5-4.25 5S14 23 13 20Zm13.5 0c2.5-2 6-2 8.5 0-1 3-2.5 5-4.25 5S27.5 23 26.5 20Z' fill='%237A4B2A'/%3E%3C/svg%3E"
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M6 16c0-5 8-9 18-9s18 4 18 9v8c0 8-8 16-18 16S6 32 6 24Z' fill='none' stroke='%231E293B' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M13 20c2.5-2 6-2 8.5 0-1 3-2.5 5-4.25 5S14 23 13 20Zm13.5 0c2.5-2 6-2 8.5 0-1 3-2.5 5-4.25 5S27.5 23 26.5 20Z' fill='%231E293B'/%3E%3C/svg%3E"
 
 /** The working favicon: the mask with a ring around it. */
 export const MASK_FAVICON_WORKING =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='22' fill='none' stroke='%237A4B2A' stroke-width='2'/%3E%3Cpath d='M6 16c0-5 8-9 18-9s18 4 18 9v8c0 8-8 16-18 16S6 32 6 24Z' fill='none' stroke='%237A4B2A' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M13 20c2.5-2 6-2 8.5 0-1 3-2.5 5-4.25 5S14 23 13 20Zm13.5 0c2.5-2 6-2 8.5 0-1 3-2.5 5-4.25 5S27.5 23 26.5 20Z' fill='%237A4B2A'/%3E%3C/svg%3E"
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Ccircle cx='24' cy='24' r='22' fill='none' stroke='%231E293B' stroke-width='2'/%3E%3Cpath d='M6 16c0-5 8-9 18-9s18 4 18 9v8c0 8-8 16-18 16S6 32 6 24Z' fill='none' stroke='%231E293B' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M13 20c2.5-2 6-2 8.5 0-1 3-2.5 5-4.25 5S14 23 13 20Zm13.5 0c2.5-2 6-2 8.5 0-1 3-2.5 5-4.25 5S27.5 23 26.5 20Z' fill='%231E293B'/%3E%3C/svg%3E"
 
 /** The failed favicon: the mask with a small octagon badge. */
 export const MASK_FAVICON_FAILED =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M6 16c0-5 8-9 18-9s18 4 18 9v8c0 8-8 16-18 16S6 32 6 24Z' fill='none' stroke='%237A4B2A' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M13 20c2.5-2 6-2 8.5 0-1 3-2.5 5-4.25 5S14 23 13 20Zm13.5 0c2.5-2 6-2 8.5 0-1 3-2.5 5-4.25 5S27.5 23 26.5 20Z' fill='%237A4B2A'/%3E%3Cpath d='M36 30h8l5 5v8l-5 5h-8l-5-5v-8Z' fill='%23A3281C'/%3E%3C/svg%3E"
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M6 16c0-5 8-9 18-9s18 4 18 9v8c0 8-8 16-18 16S6 32 6 24Z' fill='none' stroke='%231E293B' stroke-width='3' stroke-linejoin='round'/%3E%3Cpath d='M13 20c2.5-2 6-2 8.5 0-1 3-2.5 5-4.25 5S14 23 13 20Zm13.5 0c2.5-2 6-2 8.5 0-1 3-2.5 5-4.25 5S27.5 23 26.5 20Z' fill='%231E293B'/%3E%3Cpath d='M36 30h8l5 5v8l-5 5h-8l-5-5v-8Z' fill='%23B91C1C'/%3E%3C/svg%3E"

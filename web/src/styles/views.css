@@ -6,9 +6,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: var(--space-12);
   max-width: 880px;
   margin: 0 auto;
-  padding: var(--space-64) var(--page-gutter);
+  padding: var(--space-32) var(--page-gutter);
   text-align: center;
   overflow: auto;
 }

@@ -495,6 +495,11 @@ describe('Dropzone', () => {
     expect(screen.getByRole('button', { name: 'Cancel upload' })).toBeInTheDocument()
   })
 
+  it('shows processing when all bytes have uploaded', () => {
+    render(<Dropzone state="uploading" fileName="capture.pcap" uploaded={4096} total={4096} />)
+    expect(screen.getByText('Processing capture.pcap…')).toBeInTheDocument()
+  })
+
   it('offers a retry and another file when the upload failed', async () => {
     const onRetry = vi.fn()
     const user = userEvent.setup()

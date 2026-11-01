@@ -97,7 +97,10 @@ function validParam(name: string, value: string, rule: ParamRule): boolean {
  * reported so the view can show the "Ignored an unrecognised filter" note.
  */
 export function parseRoute(pathname: string, search: string): { route: Route; ignored: boolean } {
-  const segments = pathname.split('/').filter((segment) => segment.length > 0)
+  const qIndex = pathname.indexOf('?')
+  const cleanPath = qIndex >= 0 ? pathname.slice(0, qIndex) : pathname
+  const searchPart = qIndex >= 0 && !search ? pathname.slice(qIndex) : search
+  const segments = cleanPath.split('/').filter((segment) => segment.length > 0)
 
   if (segments.length === 0) {
     return { route: { kind: 'empty' }, ignored: false }
@@ -125,7 +128,7 @@ export function parseRoute(pathname: string, search: string): { route: Route; ig
 
   const params: URLParams = {}
   let ignored = false
-  const query = new URLSearchParams(search)
+  const query = new URLSearchParams(searchPart)
   const rules = tab ? VIEW_PARAMS[tab] : {}
   for (const [name, value] of query.entries()) {
     const rule = rules[name]
@@ -160,7 +163,10 @@ export function useRoute(): RouteState {
   }, [])
 
   const navigate = useCallback((to: string, options?: { replace?: boolean }) => {
-    const parsed = parseRoute(to, to.includes('?') ? to.slice(to.indexOf('?')) : '')
+    const qIndex = to.indexOf('?')
+    const pathOnly = qIndex >= 0 ? to.slice(0, qIndex) : to
+    const searchOnly = qIndex >= 0 ? to.slice(qIndex) : ''
+    const parsed = parseRoute(pathOnly, searchOnly)
     if (options?.replace) {
       window.history.replaceState(window.history.state, '', to)
     } else {

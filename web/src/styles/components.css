@@ -1493,6 +1493,16 @@ button.detail-section__heading {
   background: var(--accent-tint);
 }
 
+.event-card--selected.event-card--warning {
+  outline-color: var(--warning);
+  background: var(--warning-tint);
+}
+
+.event-card--selected.event-card--critical {
+  outline-color: var(--critical);
+  background: var(--critical-tint);
+}
+
 .event-card--warning {
   background: color-mix(in srgb, var(--warning-tint) 50%, var(--bg-surface));
 }
