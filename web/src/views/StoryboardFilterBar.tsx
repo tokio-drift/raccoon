@@ -139,11 +139,8 @@ export function StoryboardFilterBar({
           <SearchField
             label="Search events"
             placeholder="Search events"
-            value={query}
-            onChange={(value) => {
-              dirtyQuery.current = true
-              setQuery(value)
-            }}
+            value={filters.query}
+            onChange={(value) => onChange({ ...filters, query: value })}
             inputRef={searchRef}
           />
         </div>

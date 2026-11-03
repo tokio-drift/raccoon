@@ -299,10 +299,16 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-8);
-  padding: var(--space-8) var(--page-gutter) var(--space-8);
-  /* No border-bottom here — the TimeStrip sits directly below and the
-     storyboard-jump border-bottom below it acts as the single separator. */
+  padding: var(--space-8) var(--page-gutter) var(--space-4);
   background: var(--bg-surface);
+}
+
+.storyboard-timeline {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) var(--page-gutter) var(--space-8);
+  background: var(--bg-surface);
+  border-bottom: var(--border-hairline) solid var(--border-subtle);
 }
 
 .storyboard-filters__row {
@@ -379,8 +385,10 @@
 .storyboard-list {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
+  -webkit-overflow-scrolling: touch;
 }
 
 .storyboard-list__pill {
@@ -404,11 +412,19 @@
   position: absolute;
   left: 0;
   right: 0;
-  padding: 0 var(--page-gutter);
+  padding: var(--space-4) var(--page-gutter);
+  box-sizing: border-box;
 }
 
-.storyboard-list__row--child {
-  padding-left: calc(var(--page-gutter) + var(--space-24));
+/* The card wrapper inside the virtual row. It is in normal flow, so the row
+   measures its content instead of collapsing around an absolutely positioned
+   child (which made every card overlap the next one). */
+.storyboard-list__item {
+  min-width: 0;
+}
+
+.storyboard-list__item--child {
+  padding-left: var(--space-24);
 }
 
 .storyboard-list__chapter {
@@ -803,6 +819,7 @@
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -1130,7 +1147,6 @@
   gap: var(--space-12);
   min-width: 0;
   min-height: 0;
-  margin-left: var(--space-8);
 }
 
 .streams-view__loading {
@@ -1159,7 +1175,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-4) 0;
+  padding: var(--space-8);
 }
 
 .streams-list__spacer {
@@ -1177,6 +1193,7 @@
   display: flex;
   align-items: stretch;
   gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 .streams-list__chevron {
@@ -1254,6 +1271,7 @@
   align-items: center;
   gap: var(--space-8);
   min-width: 0;
+  flex: 1 1 auto;
 }
 
 .streams-header__bar-label {
@@ -1262,10 +1280,20 @@
   white-space: nowrap;
 }
 
+.streams-header__bar-track {
+  display: flex;
+  flex: 1 1 auto;
+  height: var(--space-8);
+  background: var(--bg-sunken);
+  border: var(--border-hairline) solid var(--border-subtle);
+  border-radius: var(--radius-badge);
+  overflow: hidden;
+}
+
 .streams-header__bar-fill {
   display: block;
-  height: var(--space-8);
-  min-width: var(--space-4);
+  height: 100%;
+  min-width: 0;
   border-radius: var(--radius-badge);
 }
 

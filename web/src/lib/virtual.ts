@@ -8,10 +8,11 @@
 export const ROW_HEIGHTS: Record<string, number> = {
   chapter: 32,
   date: 28,
+  'not-dated-separator': 28,
   gap: 32,
-  event: 72,
-  'not-dated': 72,
-  group: 72,
+  event: 104,
+  'not-dated': 104,
+  group: 96,
 }
 
 /** The number of rows rendered above and below the viewport. */

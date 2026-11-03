@@ -413,33 +413,35 @@ export function StoryboardView({
             canJumpWarning={warningIds.length > 0}
             searchRef={searchRef}
           />
-          <TimeStrip
-            ticks={events.map((event) => ({
-              id: event.id,
-              time: parseTimestamp(event.ts) - storyboard.captureStart,
-              severity: eventSeverity(event),
-            }))}
-            duration={storyboard.duration}
-            selectedId={selectedId ?? undefined}
-            onSelect={(id) => select(id)}
-            onRangeChange={(range) => {
-              if (!range) {
-                setFilters({ ...filters, from: null, to: null })
-                return
+          <div className="storyboard-timeline">
+            <TimeStrip
+              ticks={events.map((event) => ({
+                id: event.id,
+                time: parseTimestamp(event.ts) - storyboard.captureStart,
+                severity: eventSeverity(event),
+              }))}
+              duration={storyboard.duration}
+              selectedId={selectedId ?? undefined}
+              onSelect={(id) => select(id)}
+              onRangeChange={(range) => {
+                if (!range) {
+                  setFilters({ ...filters, from: null, to: null })
+                  return
+                }
+                setFilters({
+                  ...filters,
+                  from: storyboard.captureStart + range[0],
+                  to: storyboard.captureStart + range[1],
+                })
+              }}
+              onRangeClear={() => setFilters({ ...filters, from: null, to: null })}
+              range={
+                filters.from !== null && filters.to !== null
+                  ? [filters.from - storyboard.captureStart, filters.to - storyboard.captureStart]
+                  : null
               }
-              setFilters({
-                ...filters,
-                from: storyboard.captureStart + range[0],
-                to: storyboard.captureStart + range[1],
-              })
-            }}
-            onRangeClear={() => setFilters({ ...filters, from: null, to: null })}
-            range={
-              filters.from !== null && filters.to !== null
-                ? [filters.from - storyboard.captureStart, filters.to - storyboard.captureStart]
-                : null
-            }
-          />
+            />
+          </div>
         </div>
         <div className="storyboard__body">
           <div className="storyboard__list-pane">
@@ -590,33 +592,35 @@ export function StoryboardView({
           canJumpWarning={warningIds.length > 0}
           searchRef={searchRef}
         />
-        <TimeStrip
-          ticks={events.map((event) => ({
-            id: event.id,
-            time: parseTimestamp(event.ts) - storyboard.captureStart,
-            severity: eventSeverity(event),
-          }))}
-          duration={storyboard.duration}
-          selectedId={selectedId ?? undefined}
-          onSelect={(id) => select(id)}
-          onRangeChange={(range) => {
-            if (!range) {
-              setFilters({ ...filters, from: null, to: null })
-              return
+        <div className="storyboard-timeline">
+          <TimeStrip
+            ticks={events.map((event) => ({
+              id: event.id,
+              time: parseTimestamp(event.ts) - storyboard.captureStart,
+              severity: eventSeverity(event),
+            }))}
+            duration={storyboard.duration}
+            selectedId={selectedId ?? undefined}
+            onSelect={(id) => select(id)}
+            onRangeChange={(range) => {
+              if (!range) {
+                setFilters({ ...filters, from: null, to: null })
+                return
+              }
+              setFilters({
+                ...filters,
+                from: storyboard.captureStart + range[0],
+                to: storyboard.captureStart + range[1],
+              })
+            }}
+            onRangeClear={() => setFilters({ ...filters, from: null, to: null })}
+            range={
+              filters.from !== null && filters.to !== null
+                ? [filters.from - storyboard.captureStart, filters.to - storyboard.captureStart]
+                : null
             }
-            setFilters({
-              ...filters,
-              from: storyboard.captureStart + range[0],
-              to: storyboard.captureStart + range[1],
-            })
-          }}
-          onRangeClear={() => setFilters({ ...filters, from: null, to: null })}
-          range={
-            filters.from !== null && filters.to !== null
-              ? [filters.from - storyboard.captureStart, filters.to - storyboard.captureStart]
-              : null
-          }
-        />
+          />
+        </div>
       </div>
 
       <div

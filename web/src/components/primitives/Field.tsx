@@ -131,7 +131,11 @@ export function SearchField({
           type="button"
           className="search-field__clear"
           aria-label="Clear search"
-          onClick={() => push('')}
+          onClick={() => {
+            setText('')
+            if (timer.current !== null) window.clearTimeout(timer.current)
+            onChange('')
+          }}
         >
           <Icon name="close" size={16} />
         </button>

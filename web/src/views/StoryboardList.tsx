@@ -38,7 +38,7 @@ import { computeOffsets, computeVirtualRange, findAnchor, ROW_HEIGHTS } from '..
  */
 
 /** The height a card gets when it is expanded. */
-const EXPANDED_EXTRA = 96
+const EXPANDED_EXTRA = 120
 
 /** The viewport height used when the container cannot be measured. */
 const FALLBACK_VIEWPORT = 640
@@ -97,16 +97,38 @@ export function StoryboardList({
   const [viewportHeight, setViewportHeight] = useState(FALLBACK_VIEWPORT)
   const anchor = useRef<{ key: string; delta: number } | null>(null)
 
+  const [measuredHeights, setMeasuredHeights] = useState<
+    Record<string, { height: number; expanded: boolean }>
+  >({})
+
+  const measureRow = useCallback(
+    (key: string, expanded: boolean, node: HTMLDivElement | null) => {
+      if (!node) return
+      const height = node.offsetHeight
+      if (height <= 0) return
+      setMeasuredHeights((prev) => {
+        const current = prev[key]
+        if (current?.height === height && current.expanded === expanded) return prev
+        return { ...prev, [key]: { height, expanded } }
+      })
+    },
+    [],
+  )
+
   const heights = useMemo(
     () =>
       rows.map((row) => {
-        const base = ROW_HEIGHTS[row.kind] ?? 72
-        if (row.kind === 'event' || row.kind === 'not-dated') {
-          return expandedCards.includes(row.event.id) ? base + EXPANDED_EXTRA : base
-        }
-        return base
+        const base = ROW_HEIGHTS[row.kind] ?? 104
+        const expandable = row.kind === 'event' || row.kind === 'not-dated'
+        const expanded = expandable && expandedCards.includes(row.event.id)
+        const measured = measuredHeights[row.key]
+        // A measurement is only used for the state it was taken in. A card that
+        // has just been expanded therefore keeps its estimated height until the
+        // new height is read, instead of briefly overlapping the rows below.
+        if (measured && measured.expanded === expanded) return measured.height
+        return expandable && expanded ? base + EXPANDED_EXTRA : base
       }),
-    [rows, expandedCards],
+    [rows, expandedCards, measuredHeights],
   )
   const offsets = useMemo(() => computeOffsets(heights), [heights])
 
@@ -118,8 +140,16 @@ export function StoryboardList({
       if (height > 0) setViewportHeight(height)
     }
     measure()
-    element.addEventListener('resize', measure)
-    return () => element.removeEventListener('resize', measure)
+    window.addEventListener('resize', measure)
+    let ro: ResizeObserver | null = null
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(measure)
+      ro.observe(element)
+    }
+    return () => {
+      window.removeEventListener('resize', measure)
+      ro?.disconnect()
+    }
   }, [scrollRef])
 
   // The reading position is kept when the list grows: the row that was at the
@@ -162,9 +192,17 @@ export function StoryboardList({
 
   // The selected card is brought into view when the selection moves, so the
   // keyboard map of §5.17 ("next event: selects, scrolls into view") holds. A
-  // card that is already visible is never moved (§5.14).
+  // card that is already visible is never moved (§5.14). The heights and the
+  // offsets change while rows are measured, so the scroll happens once per
+  // selection: otherwise scrolling away from the selected card would snap the
+  // list back to it whenever a row above it was measured.
+  const selectedScrolled = useRef<number | null>(null)
   useEffect(() => {
-    if (selectedId === null) return
+    if (selectedId === null) {
+      selectedScrolled.current = null
+      return
+    }
+    if (selectedScrolled.current === selectedId) return
     const index = rows.findIndex((row) => row.kind === 'event' && row.event.id === selectedId)
     if (index < 0) return
     const element = scrollRef.current
@@ -176,6 +214,7 @@ export function StoryboardList({
     } else if (bottom > element.scrollTop + element.clientHeight) {
       element.scrollTop = Math.max(0, bottom - element.clientHeight)
     }
+    selectedScrolled.current = selectedId
     setScrollTop(element.scrollTop)
   }, [selectedId, rows, offsets, heights, scrollRef])
 
@@ -233,9 +272,13 @@ export function StoryboardList({
         {rows.slice(range.start, range.end).map((row, index) => {
           const top = offsets[range.start + index]
           const ordinal = ordinals.list[range.start + index] ?? 0
+          const expanded =
+            (row.kind === 'event' || row.kind === 'not-dated') &&
+            expandedCards.includes(row.event.id)
           return (
             <div
               key={row.key}
+              ref={(el) => measureRow(row.key, expanded, el)}
               className="storyboard-list__row"
               data-event-id={'event' in row ? row.event.id : undefined}
               role="presentation"
@@ -346,7 +389,7 @@ function StoryboardRowView({
     // (§5.6): the reader sees that the list is short on purpose.
     const hidden = Math.max(0, row.total - children.length)
     return (
-      <div className={row.depth > 0 ? 'storyboard-list__row storyboard-list__row--child' : 'storyboard-list__row'}>
+      <div className={row.depth > 0 ? 'storyboard-list__item storyboard-list__item--child' : 'storyboard-list__item'}>
         <GroupCard
           position={position}
           severity={severity}
@@ -383,8 +426,8 @@ function StoryboardRowView({
     <div
       className={
         row.depth > 0
-          ? 'storyboard-list__row storyboard-list__row--child'
-          : 'storyboard-list__row'
+          ? 'storyboard-list__item storyboard-list__item--child'
+          : 'storyboard-list__item'
       }
     >
       <EventCard

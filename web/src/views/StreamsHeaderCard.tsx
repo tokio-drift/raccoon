@@ -99,17 +99,21 @@ export function StreamsHeaderCard({
       <div className="streams-header__row streams-header__row--bars">
         <div className="streams-header__bar streams-header__bar--c2s">
           <span className="streams-header__bar-label">{`Client → Server ${formatBytes(stream.bytesC2S)}`}</span>
-          <span
-            className="streams-header__bar-fill"
-            style={{ width: `${total > 0 ? Math.round((stream.bytesC2S / total) * 100) : 0}%` }}
-          />
+          <span className="streams-header__bar-track">
+            <span
+              className="streams-header__bar-fill"
+              style={{ width: `${total > 0 ? Math.round((stream.bytesC2S / total) * 100) : 0}%` }}
+            />
+          </span>
         </div>
         <div className="streams-header__bar streams-header__bar--s2c">
           <span className="streams-header__bar-label">{`Server → Client ${formatBytes(stream.bytesS2C)}`}</span>
-          <span
-            className="streams-header__bar-fill"
-            style={{ width: `${total > 0 ? Math.round((stream.bytesS2C / total) * 100) : 0}%` }}
-          />
+          <span className="streams-header__bar-track">
+            <span
+              className="streams-header__bar-fill"
+              style={{ width: `${total > 0 ? Math.round((stream.bytesS2C / total) * 100) : 0}%` }}
+            />
+          </span>
         </div>
       </div>
 
