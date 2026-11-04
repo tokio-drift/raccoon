@@ -35,6 +35,12 @@ Think of a capture as a recording of many small packets from different conversat
 - YARA is optional. Without it, YARA scanning is unavailable or marked not checked.
 - VirusTotal is optional and requires an API key and internet access. You can disable online lookups with `--offline`.
 
+## Installation
+To install the package on your system:
+```
+go install github.com/tokio-drift/raccoon/cmd/raccoon@latest
+```
+
 ## Set up YARA and VirusTotal (optional)
 
 These are two separate checks on recovered files. YARA scans the file locally using rules. VirusTotal checks the file's SHA-256 hash online.
